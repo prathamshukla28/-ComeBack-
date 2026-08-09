@@ -1,70 +1,80 @@
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import { Tabs } from 'expo-router';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 
+function TabIcon({ name, color }: { name: SymbolViewProps['name']; color: SymbolViewProps['tintColor'] }) {
+  return <SymbolView name={name} tintColor={color} size={26} />;
+}
+
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const scheme = useColorScheme();
+  const theme = Colors[scheme];
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
+        tabBarActiveTintColor: theme.tint,
+        tabBarInactiveTintColor: theme.tabIconDefault,
+        tabBarStyle: { backgroundColor: theme.card, borderTopColor: theme.border },
+        headerStyle: { backgroundColor: theme.background },
+        headerTitleStyle: { color: theme.text, fontWeight: '700' },
         headerShown: useClientOnlyValue(false, true),
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+          title: 'Today',
+          tabBarIcon: ({ color }) => <TabIcon name="house.fill" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="workout"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
+          title: 'Workout',
+          tabBarIcon: ({ color }) => <TabIcon name="dumbbell.fill" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="habits"
+        options={{
+          title: 'Habits',
+          tabBarIcon: ({ color }) => <TabIcon name="chart.bar.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="intimacy"
+        options={{
+          title: 'Intimacy',
+          tabBarIcon: ({ color }) => <TabIcon name="lock.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="guru"
+        options={{
+          title: 'Guru',
+          tabBarIcon: ({ color }) => <TabIcon name="figure.strengthtraining.traditional" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="coach"
+        options={{
+          title: 'Coach',
+          tabBarIcon: ({ color }) => <TabIcon name="brain.head.profile" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color }) => <TabIcon name="gearshape.fill" color={color} />,
+        }}
+      />
+      {/* Hide the old template screen */}
+      <Tabs.Screen name="two" options={{ href: null }} />
     </Tabs>
   );
 }
