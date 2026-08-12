@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://github.com/prathamshukla28/-ComeBack-#readme
+    about: Setup, scripts, architecture — start here.
+  - name: 🔐 Report a security vulnerability
+    url: https://github.com/prathamshukla28/-ComeBack-/security/advisories/new
+    about: Please disclose privately; do not open a public issue.
+  - name: 💬 Ask a question / discuss
+    url: https://github.com/prathamshukla28/-ComeBack-/discussions
+    about: For open-ended discussion, ideas, and help.

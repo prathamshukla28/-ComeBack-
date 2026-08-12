@@ -1,0 +1,55 @@
+name: ✨ Feature Request
+description: Suggest an idea or improvement for ComeBack
+title: 'feat: <short description>'
+labels: ['enhancement', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Please describe the problem first, then the proposed solution.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checklist
+      options:
+        - label: I searched the existing issues and did not find a duplicate.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: A clear description of the user pain or the gap in the product.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What would you like to happen? Sketch the UX or the API surface.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you thought about and why they were rejected.
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Estimated impact
+      options:
+        - Nice-to-have
+        - Meaningful improvement
+        - High impact / blocker for adoption
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context

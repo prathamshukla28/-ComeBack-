@@ -1,0 +1,89 @@
+name: 🐛 Bug Report
+description: Something is broken or behaving unexpectedly
+title: 'bug: <short description>'
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Please fill in as much detail as you can — it dramatically speeds up triage.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checklist
+      options:
+        - label: I searched the existing issues and did not find a duplicate.
+          required: true
+        - label: I am running the latest version from `main`.
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of what the bug is.
+      placeholder: When I tap X on the Habits tab, the app crashes with...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the app
+        2. Go to '...'
+        3. Tap '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - iOS (device)
+        - iOS (simulator)
+        - Android (device)
+        - Android (emulator)
+        - Web
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS version
+      placeholder: iOS 17.5, Android 14, macOS 14.5
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version / commit
+      placeholder: 1.0.0 or SHA abc1234
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, screenshots, or screen recording
+      description: Paste terminal output, Metro logs, or attach media. Please redact any personal data.
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
