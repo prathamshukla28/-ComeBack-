@@ -1,0 +1,14 @@
+node_modules/
+.expo/
+dist/
+web-build/
+coverage/
+ios/
+android/
+stubs/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+*.md.tpl
+expo-env.d.ts
+polyfills-early.js
