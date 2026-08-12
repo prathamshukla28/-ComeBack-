@@ -134,13 +134,13 @@ Scan the QR with your iPhone camera. Done.
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---|---|
-| QR code won't scan | Make sure iPhone + Mac are on the same Wi-Fi. Or press `s` in terminal to switch to tunnel mode. |
-| "Network response timed out" in Expo Go | In terminal press `s`, then re-scan the new QR. |
-| App crashes on open | In terminal, press `r` to reload. |
-| Forgot Supabase password | Doesn't matter — you don't log into Supabase from the app, only via web dashboard. Reset there if you need to. |
-| Gemini says "quota exceeded" | You hit 1500 msg/day (unlikely). Wait until tomorrow, or upgrade to paid ($). |
+| Problem                                 | Fix                                                                                                            |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| QR code won't scan                      | Make sure iPhone + Mac are on the same Wi-Fi. Or press `s` in terminal to switch to tunnel mode.               |
+| "Network response timed out" in Expo Go | In terminal press `s`, then re-scan the new QR.                                                                |
+| App crashes on open                     | In terminal, press `r` to reload.                                                                              |
+| Forgot Supabase password                | Doesn't matter — you don't log into Supabase from the app, only via web dashboard. Reset there if you need to. |
+| Gemini says "quota exceeded"            | You hit 1500 msg/day (unlikely). Wait until tomorrow, or upgrade to paid ($).                                  |
 
 ---
 
