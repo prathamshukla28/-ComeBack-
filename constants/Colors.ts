@@ -1,34 +1,54 @@
-// ComeBack — brand palette
-const brand = '#FF3B30';       // gym red — action, PRs, streaks
-const brandMuted = '#B5251E';
-const accent = '#0A84FF';       // links, secondary actions
+const brand = '#FF3B30';
+const brandDark = '#FF453A';
+const accent = '#0A84FF';
+const warm = '#FF9F0A';
 
 export default {
   brand,
-  brandMuted,
+  brandMuted: '#B5251E',
   accent,
   light: {
-    text: '#0A0A0A',
+    text: '#0A0B0C',
     textMuted: '#6B7280',
-    background: '#FAFAF9',
+    textSubtle: '#9CA3AF',
+    background: '#F7F5F2',
+    backgroundElevated: '#FFFFFF',
     card: '#FFFFFF',
-    border: '#E5E7EB',
+    cardMuted: '#F4F1EC',
+    border: '#E7E2DC',
+    borderStrong: '#D6CFC6',
     tint: brand,
     tabIconDefault: '#9CA3AF',
     tabIconSelected: brand,
+    tabBar: 'rgba(255,255,255,0.86)',
+    tabBarBorder: 'rgba(0,0,0,0.06)',
     danger: '#DC2626',
+    warning: warm,
     success: '#16A34A',
+    accent,
+    heroGradientA: '#FF3B30',
+    heroGradientB: '#FF7A6B',
   },
   dark: {
     text: '#F5F5F4',
-    textMuted: '#9CA3AF',
-    background: '#0A0A0A',
-    card: '#171717',
-    border: '#262626',
-    tint: brand,
-    tabIconDefault: '#525252',
-    tabIconSelected: brand,
+    textMuted: '#A8A29E',
+    textSubtle: '#78716C',
+    background: '#0B0B0E',
+    backgroundElevated: '#141418',
+    card: '#17171C',
+    cardMuted: '#1F1F25',
+    border: '#26262E',
+    borderStrong: '#33333B',
+    tint: brandDark,
+    tabIconDefault: '#57575E',
+    tabIconSelected: brandDark,
+    tabBar: 'rgba(20,20,24,0.86)',
+    tabBarBorder: 'rgba(255,255,255,0.08)',
     danger: '#EF4444',
+    warning: warm,
     success: '#22C55E',
+    accent: '#409CFF',
+    heroGradientA: '#FF3B30',
+    heroGradientB: '#7A1A15',
   },
 };

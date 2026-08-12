@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
@@ -126,12 +126,7 @@ export function Chat({ config }: { config: ChatConfig }) {
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         />
 
-        {thinking && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 6 }}>
-            <ActivityIndicator size="small" color={brand} />
-            <Text style={{ color: c.textMuted, fontSize: 13 }}>Thinking…</Text>
-          </View>
-        )}
+        {thinking && <ThinkingIndicator thread={config.thread} color={brand} textColor={c.textMuted} />}
 
         <View style={[styles.inputRow, { borderColor: c.border, backgroundColor: c.card }]}>
           <TextInput
@@ -161,6 +156,36 @@ export function Chat({ config }: { config: ChatConfig }) {
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+const GURU_LINES = [
+  'checking your last 30 days…',
+  'loading brutal honesty…',
+  'looking up your recent sets…',
+  'sharpening the pencil…',
+  'no fluff, no filler…',
+];
+const COACH_LINES = [
+  'thinking about you…',
+  'reading between the lines…',
+  'pulling what I remember…',
+  'sitting with it for a sec…',
+  'noticing the pattern…',
+];
+
+function ThinkingIndicator({ thread, color, textColor }: { thread: ChatThread; color: string; textColor: string }) {
+  const lines = thread === 'guru' ? GURU_LINES : COACH_LINES;
+  const [idx, setIdx] = useState(() => Math.floor(Math.random() * lines.length));
+  useEffect(() => {
+    const iv = setInterval(() => setIdx((i) => (i + 1) % lines.length), 1500);
+    return () => clearInterval(iv);
+  }, [lines]);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 6 }}>
+      <ActivityIndicator size="small" color={color} />
+      <Text style={{ color: textColor, fontSize: 13, fontStyle: 'italic' }}>{lines[idx]}</Text>
+    </View>
   );
 }
 

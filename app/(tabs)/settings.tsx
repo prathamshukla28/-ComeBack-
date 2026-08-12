@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Linking, View } from 'react-native';
 import { Button, Card, H1, H2, Input, P, Screen } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
+import { clearAllReminders, requestNotificationPermission, scheduleDailyReminders } from '@/lib/notifications';
 import { loadProfile, upsertProfile } from '@/lib/queries';
 import { clearGeminiKey, getGeminiKey, saveGeminiKey } from '@/lib/secureStore';
 
@@ -117,6 +118,36 @@ export default function Settings() {
           variant="ghost"
           onPress={() => Linking.openURL('https://aistudio.google.com/apikey')}
         />
+      </Card>
+
+      <Card>
+        <H2>Daily reminders</H2>
+        <P muted>
+          4 daily nudges: morning weigh-in, midday check, gym window, evening wrap-up. Turn on to stay honest.
+        </P>
+        <View style={{ height: 12 }} />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Button
+            title="Turn on reminders"
+            icon="bell.fill"
+            style={{ flex: 1 }}
+            onPress={async () => {
+              const ok = await requestNotificationPermission();
+              if (!ok) return Alert.alert('Permission denied', 'Enable notifications for ComeBack in iOS Settings.');
+              const n = await scheduleDailyReminders();
+              Alert.alert('Done', `${n} daily reminders scheduled.`);
+            }}
+          />
+          <Button
+            title="Turn off"
+            variant="secondary"
+            style={{ flex: 1 }}
+            onPress={async () => {
+              await clearAllReminders();
+              Alert.alert('Reminders off');
+            }}
+          />
+        </View>
       </Card>
 
       <Card>

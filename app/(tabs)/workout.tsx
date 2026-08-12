@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Confetti } from '@/components/Confetti';
 import { Button, Card, Empty, H1, H2, Input, P, Screen } from '@/components/ui';
+import { heavy, success } from '@/lib/haptics';
 import { deleteSet, ensureTodayWorkout, isNewPR, listExercises, logSet, todaySets, type Exercise } from '@/lib/queries';
 import { useTheme } from '@/lib/theme';
 
@@ -21,6 +23,7 @@ export default function Workout() {
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [rir, setRir] = useState('');
+  const [confetti, setConfetti] = useState(false);
 
   const add = useMutation({
     mutationFn: async () => {
@@ -46,7 +49,11 @@ export default function Workout() {
       qc.invalidateQueries({ queryKey: ['sets'] });
       qc.invalidateQueries({ queryKey: ['workoutStreak'] });
       if (result?.pr) {
+        heavy();
+        setConfetti(true);
         Alert.alert('🎉 NEW PR', `${result.name}: ${result.w}kg × ${result.r}\nEstimated 1RM went up.`);
+      } else {
+        success();
       }
     },
     onError: (e: any) => Alert.alert('Cannot log set', e.message),
@@ -68,6 +75,7 @@ export default function Workout() {
 
   return (
     <Screen>
+      <Confetti visible={confetti} onDone={() => setConfetti(false)} />
       <H1>Workout</H1>
       <P muted>Log every set. No excuses.</P>
       <View style={{ height: 16 }} />
