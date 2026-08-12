@@ -1,12 +1,19 @@
 import { getGeminiKey } from './secureStore';
 
 export type ChatRole = 'user' | 'model';
-export interface ChatTurn { role: ChatRole; text: string }
+export interface ChatTurn {
+  role: ChatRole;
+  text: string;
+}
 
 const MODEL = 'gemini-2.0-flash';
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-async function callGemini(systemPrompt: string, history: ChatTurn[], userMessage: string): Promise<string> {
+async function callGemini(
+  systemPrompt: string,
+  history: ChatTurn[],
+  userMessage: string,
+): Promise<string> {
   const key = await getGeminiKey();
   if (!key) throw new Error('GEMINI_KEY_MISSING');
 
@@ -28,7 +35,9 @@ async function callGemini(systemPrompt: string, history: ChatTurn[], userMessage
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
     if (res.status === 401 || res.status === 403) {
-      throw new Error(`Auth failed (${res.status}). Your API key may be invalid or an AQ. format key not accepted. Create a new key.`);
+      throw new Error(
+        `Auth failed (${res.status}). Your API key may be invalid or an AQ. format key not accepted. Create a new key.`,
+      );
     }
     if (res.status === 429) throw new Error('Rate limit hit. Free tier: 15 req/min.');
     throw new Error(`Gemini ${res.status}: ${errText.slice(0, 200)}`);
@@ -40,7 +49,11 @@ async function callGemini(systemPrompt: string, history: ChatTurn[], userMessage
   return text.trim();
 }
 
-export async function sendMessage(systemPrompt: string, history: ChatTurn[], userMessage: string): Promise<string> {
+export async function sendMessage(
+  systemPrompt: string,
+  history: ChatTurn[],
+  userMessage: string,
+): Promise<string> {
   return callGemini(systemPrompt, history, userMessage);
 }
 

@@ -20,9 +20,20 @@ function patchAbortSignal() {
   };
   proto.dispatchEvent = function (event: any) {
     const arr = this[LKEY] && this[LKEY][event.type];
-    if (arr) arr.slice().forEach((l: any) => { try { l.call(this, event); } catch (e) { console.warn(e); } });
+    if (arr)
+      arr.slice().forEach((l: any) => {
+        try {
+          l.call(this, event);
+        } catch (e) {
+          console.warn(e);
+        }
+      });
     if (event.type === 'abort' && typeof (this as any).onabort === 'function') {
-      try { (this as any).onabort.call(this, event); } catch (e) { console.warn(e); }
+      try {
+        (this as any).onabort.call(this, event);
+      } catch (e) {
+        console.warn(e);
+      }
     }
     return true;
   };
@@ -36,7 +47,9 @@ function patchAbortSignal() {
   acProto.abort = function (reason?: any) {
     const sig = (this as any).signal;
     origAbort.call(this, reason);
-    try { sig.dispatchEvent({ type: 'abort', target: sig }); } catch {}
+    try {
+      sig.dispatchEvent({ type: 'abort', target: sig });
+    } catch {}
   };
   console.log('[ComeBack] AbortSignal patched');
 }

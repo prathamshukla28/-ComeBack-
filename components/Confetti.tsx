@@ -18,8 +18,20 @@ function Piece({ delay }: { delay: number }) {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(x, { toValue: targetX, duration: 1600, delay, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.timing(y, { toValue: targetY, duration: 1800, delay, easing: Easing.bezier(0.2, 0.6, 0.4, 1), useNativeDriver: true }),
+      Animated.timing(x, {
+        toValue: targetX,
+        duration: 1600,
+        delay,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(y, {
+        toValue: targetY,
+        duration: 1800,
+        delay,
+        easing: Easing.bezier(0.2, 0.6, 0.4, 1),
+        useNativeDriver: true,
+      }),
       Animated.timing(rot, { toValue: spins, duration: 1800, delay, useNativeDriver: true }),
       Animated.sequence([
         Animated.delay(delay + 1200),

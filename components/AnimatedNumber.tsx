@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Text, type TextStyle } from 'react-native';
 
-export function AnimatedNumber({ value, style, duration = 600 }: { value: number; style?: TextStyle | TextStyle[]; duration?: number }) {
+export function AnimatedNumber({
+  value,
+  style,
+  duration = 600,
+}: {
+  value: number;
+  style?: TextStyle | TextStyle[];
+  duration?: number;
+}) {
   const [display, setDisplay] = useState(value);
   useEffect(() => {
     const start = display;

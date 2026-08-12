@@ -4,7 +4,15 @@ import { Alert, FlatList, Modal, Pressable, StyleSheet, View } from 'react-nativ
 import { Confetti } from '@/components/Confetti';
 import { Button, Card, Empty, H1, H2, Input, P, Screen } from '@/components/ui';
 import { heavy, success } from '@/lib/haptics';
-import { deleteSet, ensureTodayWorkout, isNewPR, listExercises, logSet, todaySets, type Exercise } from '@/lib/queries';
+import {
+  deleteSet,
+  ensureTodayWorkout,
+  isNewPR,
+  listExercises,
+  logSet,
+  todaySets,
+  type Exercise,
+} from '@/lib/queries';
 import { useTheme } from '@/lib/theme';
 
 export default function Workout() {
@@ -51,7 +59,10 @@ export default function Workout() {
       if (result?.pr) {
         heavy();
         setConfetti(true);
-        Alert.alert('🎉 NEW PR', `${result.name}: ${result.w}kg × ${result.r}\nEstimated 1RM went up.`);
+        Alert.alert(
+          '🎉 NEW PR',
+          `${result.name}: ${result.w}kg × ${result.r}\nEstimated 1RM went up.`,
+        );
       } else {
         success();
       }
@@ -90,21 +101,41 @@ export default function Workout() {
         </Pressable>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <View style={{ flex: 1 }}>
-            <Input label="Weight (kg)" keyboardType="decimal-pad" value={weight} onChangeText={setWeight} />
+            <Input
+              label="Weight (kg)"
+              keyboardType="decimal-pad"
+              value={weight}
+              onChangeText={setWeight}
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Input label="Reps" keyboardType="number-pad" value={reps} onChangeText={setReps} />
           </View>
           <View style={{ flex: 1 }}>
-            <Input label="RIR" keyboardType="number-pad" value={rir} onChangeText={setRir} placeholder="opt" />
+            <Input
+              label="RIR"
+              keyboardType="number-pad"
+              value={rir}
+              onChangeText={setRir}
+              placeholder="opt"
+            />
           </View>
         </View>
-        <Button title="Add set" icon="plus.circle.fill" onPress={() => add.mutate()} loading={add.isPending} />
+        <Button
+          title="Add set"
+          icon="plus.circle.fill"
+          onPress={() => add.mutate()}
+          loading={add.isPending}
+        />
       </Card>
 
       <H2>Today's sets</H2>
       {Object.keys(grouped).length === 0 ? (
-        <Empty icon="dumbbell.fill" title="No sets yet" subtitle="Pick an exercise above and start logging." />
+        <Empty
+          icon="dumbbell.fill"
+          title="No sets yet"
+          subtitle="Pick an exercise above and start logging."
+        />
       ) : (
         Object.entries(grouped).map(([name, rows]) => (
           <Card key={name}>
@@ -125,7 +156,9 @@ export default function Workout() {
       )}
 
       <Modal visible={pickerOpen} animationType="slide" onRequestClose={() => setPickerOpen(false)}>
-        <View style={{ flex: 1, backgroundColor: c.background, paddingTop: 60, paddingHorizontal: 20 }}>
+        <View
+          style={{ flex: 1, backgroundColor: c.background, paddingTop: 60, paddingHorizontal: 20 }}
+        >
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
             <H1>Exercise</H1>
             <Pressable onPress={() => setPickerOpen(false)}>
@@ -157,6 +190,18 @@ export default function Workout() {
 }
 
 const styles = StyleSheet.create({
-  picker: { height: 50, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center', marginBottom: 12 },
-  setRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
+  picker: {
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  setRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
 });

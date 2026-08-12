@@ -63,7 +63,11 @@ export async function workoutStreak(): Promise<number> {
   return streak;
 }
 
-export async function isNewPR(exerciseName: string, weightKg: number, reps: number): Promise<boolean> {
+export async function isNewPR(
+  exerciseName: string,
+  weightKg: number,
+  reps: number,
+): Promise<boolean> {
   const { data, error } = await supabase
     .from('workout_sets')
     .select('weight_kg, reps')
@@ -128,7 +132,10 @@ export interface Exercise {
 }
 
 export async function listExercises(): Promise<Exercise[]> {
-  const { data, error } = await supabase.from('exercises').select('id, name, muscle_group').order('name');
+  const { data, error } = await supabase
+    .from('exercises')
+    .select('id, name, muscle_group')
+    .order('name');
   if (error) throw error;
   return (data ?? []) as Exercise[];
 }
@@ -142,12 +149,23 @@ export async function ensureTodayWorkout(): Promise<string> {
     .limit(1);
   if (e1) throw e1;
   if (existing?.length) return existing[0].id;
-  const { data, error } = await supabase.from('workouts').insert({ performed_on: today }).select('id').single();
+  const { data, error } = await supabase
+    .from('workouts')
+    .insert({ performed_on: today })
+    .select('id')
+    .single();
   if (error) throw error;
   return data.id;
 }
 
-export async function logSet(args: { workoutId: string; exerciseName: string; exerciseId?: string; weightKg: number; reps: number; rir?: number }) {
+export async function logSet(args: {
+  workoutId: string;
+  exerciseName: string;
+  exerciseId?: string;
+  weightKg: number;
+  reps: number;
+  rir?: number;
+}) {
   const { data: lastIdx } = await supabase
     .from('workout_sets')
     .select('set_index')
@@ -210,8 +228,11 @@ export async function clearThread(thread: ChatThread) {
 
 /* ---------- Coach memory + profile ---------- */
 
-export async function loadCoachMemory(): Promise<Array<{ key: string; value: string }>> {
-  const { data, error } = await supabase.from('coach_memory').select('key, value').order('updated_at', { ascending: false });
+export async function loadCoachMemory(): Promise<{ key: string; value: string }[]> {
+  const { data, error } = await supabase
+    .from('coach_memory')
+    .select('key, value')
+    .order('updated_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
@@ -232,7 +253,10 @@ export async function loadProfile() {
 export async function upsertProfile(patch: Record<string, any>) {
   const { data: existing } = await supabase.from('user_profile').select('owner_id').maybeSingle();
   if (existing) {
-    const { error } = await supabase.from('user_profile').update({ ...patch, updated_at: new Date().toISOString() }).eq('owner_id', existing.owner_id);
+    const { error } = await supabase
+      .from('user_profile')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('owner_id', existing.owner_id);
     if (error) throw error;
   } else {
     const { error } = await supabase.from('user_profile').insert(patch);
@@ -248,7 +272,10 @@ export async function last30dContext(): Promise<string> {
   const iso = since.toISOString();
 
   const [workouts, sets, habits, body] = await Promise.all([
-    supabase.from('workouts').select('id, performed_on, name').gte('performed_on', iso.slice(0, 10)),
+    supabase
+      .from('workouts')
+      .select('id, performed_on, name')
+      .gte('performed_on', iso.slice(0, 10)),
     supabase
       .from('workout_sets')
       .select('exercise_name, weight_kg, reps, rir, created_at')
@@ -256,16 +283,26 @@ export async function last30dContext(): Promise<string> {
       .order('created_at', { ascending: false })
       .limit(200),
     supabase.from('habit_logs').select('kind, amount, occurred_at').gte('occurred_at', iso),
-    supabase.from('body_metrics').select('measured_on, weight_kg, body_fat_pct').gte('measured_on', iso.slice(0, 10)),
+    supabase
+      .from('body_metrics')
+      .select('measured_on, weight_kg, body_fat_pct')
+      .gte('measured_on', iso.slice(0, 10)),
   ]);
 
-  const cigTotal = (habits.data ?? []).filter((h: any) => h.kind === 'cigarette').reduce((s, h: any) => s + Number(h.amount), 0);
-  const alcTotal = (habits.data ?? []).filter((h: any) => h.kind === 'alcohol').reduce((s, h: any) => s + Number(h.amount), 0);
+  const cigTotal = (habits.data ?? [])
+    .filter((h: any) => h.kind === 'cigarette')
+    .reduce((s, h: any) => s + Number(h.amount), 0);
+  const alcTotal = (habits.data ?? [])
+    .filter((h: any) => h.kind === 'alcohol')
+    .reduce((s, h: any) => s + Number(h.amount), 0);
   const intCount = (habits.data ?? []).filter((h: any) => h.kind === 'intimacy').length;
   const workoutDates = (workouts.data ?? []).map((w: any) => w.performed_on).join(', ');
   const setLines = (sets.data ?? [])
     .slice(0, 40)
-    .map((s: any) => `${s.exercise_name}: ${s.weight_kg}kg x ${s.reps}${s.rir != null ? ` (RIR ${s.rir})` : ''}`)
+    .map(
+      (s: any) =>
+        `${s.exercise_name}: ${s.weight_kg}kg x ${s.reps}${s.rir != null ? ` (RIR ${s.rir})` : ''}`,
+    )
     .join('\n');
   const bodyLatest = (body.data ?? [])[0];
 

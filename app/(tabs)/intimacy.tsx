@@ -93,7 +93,9 @@ export default function Intimacy() {
           title="Unlock with FaceID"
           icon="faceid"
           onPress={async () => {
-            const res = await LocalAuthentication.authenticateAsync({ promptMessage: 'Unlock Intimacy' });
+            const res = await LocalAuthentication.authenticateAsync({
+              promptMessage: 'Unlock Intimacy',
+            });
             if (res.success) setUnlocked(true);
           }}
         />
@@ -117,8 +119,14 @@ export default function Intimacy() {
 function IntimacyContent() {
   const { c, brand } = useTheme();
   const qc = useQueryClient();
-  const today = useQuery({ queryKey: ['habit', 'intimacy', 'today'], queryFn: () => habitCountToday('intimacy') });
-  const week = useQuery({ queryKey: ['habit', 'intimacy', '7d'], queryFn: () => habitLast7Days('intimacy') });
+  const today = useQuery({
+    queryKey: ['habit', 'intimacy', 'today'],
+    queryFn: () => habitCountToday('intimacy'),
+  });
+  const week = useQuery({
+    queryKey: ['habit', 'intimacy', '7d'],
+    queryFn: () => habitLast7Days('intimacy'),
+  });
   const inv = () => qc.invalidateQueries({ queryKey: ['habit', 'intimacy'] });
   const add = useMutation({ mutationFn: () => logHabit('intimacy', 1), onSuccess: inv });
   const undo = useMutation({
@@ -144,21 +152,45 @@ function IntimacyContent() {
           <H1>{today.data ?? 0}</H1>
         </View>
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-          <Button title="Log +1" icon="heart.fill" onPress={() => add.mutate()} style={{ flex: 2 }} />
-          <Button title="Undo" variant="secondary" icon="arrow.uturn.backward" onPress={() => undo.mutate()} style={{ flex: 1 }} />
+          <Button
+            title="Log +1"
+            icon="heart.fill"
+            onPress={() => add.mutate()}
+            style={{ flex: 2 }}
+          />
+          <Button
+            title="Undo"
+            variant="secondary"
+            icon="arrow.uturn.backward"
+            onPress={() => undo.mutate()}
+            style={{ flex: 1 }}
+          />
         </View>
         <P muted>Last 7 days · total {weekTotal}</P>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 60, gap: 6, marginTop: 8 }}>
+        <View
+          style={{ flexDirection: 'row', alignItems: 'flex-end', height: 60, gap: 6, marginTop: 8 }}
+        >
           {(week.data ?? []).map((d) => (
             <View key={d.date} style={{ flex: 1, alignItems: 'center' }}>
-              <View style={{ width: '100%', height: (d.total / maxBar) * 50 || 2, backgroundColor: brand, borderRadius: 4 }} />
+              <View
+                style={{
+                  width: '100%',
+                  height: (d.total / maxBar) * 50 || 2,
+                  backgroundColor: brand,
+                  borderRadius: 4,
+                }}
+              />
               <P style={{ fontSize: 10, color: c.textMuted, marginTop: 4 }}>{d.date.slice(5)}</P>
             </View>
           ))}
         </View>
       </Card>
 
-      <Empty icon="lock.shield.fill" title="Your data, your device" subtitle="This tab locks again when you leave the app." />
+      <Empty
+        icon="lock.shield.fill"
+        title="Your data, your device"
+        subtitle="This tab locks again when you leave the app."
+      />
     </Screen>
   );
 }

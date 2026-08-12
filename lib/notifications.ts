@@ -2,21 +2,37 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }) as any,
+  handleNotification: async () =>
+    ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }) as any,
 });
 
 const SCHEDULED_KEY = 'comeback-daily-reminders';
 
 const DAILY = [
-  { hour: 8,  minute: 0,  title: '☀️ Morning',       body: 'Log your morning weight. Set the tone.' },
-  { hour: 12, minute: 30, title: '💧 Midday check',   body: 'Water break. How you doing? Log a cig if you had one.' },
-  { hour: 18, minute: 0,  title: '🏋️ Gym window',    body: 'If you\u2019re training today, now is the hour.' },
-  { hour: 22, minute: 0,  title: '🌙 Wrap the day',   body: 'Log tonight\u2019s cigs / drinks before bed. Honest data → real progress.' },
+  { hour: 8, minute: 0, title: '☀️ Morning', body: 'Log your morning weight. Set the tone.' },
+  {
+    hour: 12,
+    minute: 30,
+    title: '💧 Midday check',
+    body: 'Water break. How you doing? Log a cig if you had one.',
+  },
+  {
+    hour: 18,
+    minute: 0,
+    title: '🏋️ Gym window',
+    body: 'If you\u2019re training today, now is the hour.',
+  },
+  {
+    hour: 22,
+    minute: 0,
+    title: '🌙 Wrap the day',
+    body: 'Log tonight\u2019s cigs / drinks before bed. Honest data → real progress.',
+  },
 ];
 
 export async function requestNotificationPermission(): Promise<boolean> {

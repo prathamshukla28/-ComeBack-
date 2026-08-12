@@ -1,6 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { sendMessage, type ChatTurn } from '@/lib/gemini';
@@ -23,10 +34,14 @@ export function Chat({ config }: { config: ChatConfig }) {
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
 
-  const history = useQuery({ queryKey: ['chat', config.thread], queryFn: () => loadThread(config.thread) });
+  const history = useQuery({
+    queryKey: ['chat', config.thread],
+    queryFn: () => loadThread(config.thread),
+  });
 
   useEffect(() => {
-    if (history.data?.length) setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
+    if (history.data?.length)
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 100);
   }, [history.data?.length]);
 
   const send = useMutation({
@@ -44,7 +59,9 @@ export function Chat({ config }: { config: ChatConfig }) {
         await saveMessage(config.thread, 'model', reply);
         // fire-and-forget post-reply hook
         if (config.onAfterReply) {
-          Promise.resolve(config.onAfterReply(text, reply)).catch((e) => console.warn('onAfterReply', e));
+          Promise.resolve(config.onAfterReply(text, reply)).catch((e) =>
+            console.warn('onAfterReply', e),
+          );
         }
         return reply;
       } finally {
@@ -53,7 +70,10 @@ export function Chat({ config }: { config: ChatConfig }) {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['chat', config.thread] }),
     onError: (e: any) => {
-      const msg = e?.message === 'GEMINI_KEY_MISSING' ? 'Paste your Gemini API key in Settings first.' : e?.message ?? 'Something went wrong';
+      const msg =
+        e?.message === 'GEMINI_KEY_MISSING'
+          ? 'Paste your Gemini API key in Settings first.'
+          : (e?.message ?? 'Something went wrong');
       Alert.alert('Gemini error', msg);
     },
   });
@@ -91,7 +111,11 @@ export function Chat({ config }: { config: ChatConfig }) {
         </Pressable>
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90} style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={90}
+        style={{ flex: 1 }}
+      >
         <FlatList
           ref={listRef}
           data={history.data ?? []}
@@ -99,8 +123,17 @@ export function Chat({ config }: { config: ChatConfig }) {
           contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
           ListEmptyComponent={
             <View style={{ padding: 32, alignItems: 'center' }}>
-              <SymbolView name="bubble.left.and.bubble.right.fill" tintColor={c.textMuted} size={40} />
-              <Text style={[styles.subtitle, { color: c.textMuted, textAlign: 'center', marginTop: 12 }]}>
+              <SymbolView
+                name="bubble.left.and.bubble.right.fill"
+                tintColor={c.textMuted}
+                size={40}
+              />
+              <Text
+                style={[
+                  styles.subtitle,
+                  { color: c.textMuted, textAlign: 'center', marginTop: 12 },
+                ]}
+              >
                 Say hi. I have context on your recent workouts, habits, and profile.
               </Text>
             </View>
@@ -119,14 +152,18 @@ export function Chat({ config }: { config: ChatConfig }) {
                   },
                 ]}
               >
-                <Text style={{ color: mine ? '#fff' : c.text, fontSize: 15, lineHeight: 22 }}>{item.content}</Text>
+                <Text style={{ color: mine ? '#fff' : c.text, fontSize: 15, lineHeight: 22 }}>
+                  {item.content}
+                </Text>
               </View>
             );
           }}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         />
 
-        {thinking && <ThinkingIndicator thread={config.thread} color={brand} textColor={c.textMuted} />}
+        {thinking && (
+          <ThinkingIndicator thread={config.thread} color={brand} textColor={c.textMuted} />
+        )}
 
         <View style={[styles.inputRow, { borderColor: c.border, backgroundColor: c.card }]}>
           <TextInput
@@ -174,7 +211,15 @@ const COACH_LINES = [
   'noticing the pattern…',
 ];
 
-function ThinkingIndicator({ thread, color, textColor }: { thread: ChatThread; color: string; textColor: string }) {
+function ThinkingIndicator({
+  thread,
+  color,
+  textColor,
+}: {
+  thread: ChatThread;
+  color: string;
+  textColor: string;
+}) {
   const lines = thread === 'guru' ? GURU_LINES : COACH_LINES;
   const [idx, setIdx] = useState(() => Math.floor(Math.random() * lines.length));
   useEffect(() => {
@@ -182,7 +227,15 @@ function ThinkingIndicator({ thread, color, textColor }: { thread: ChatThread; c
     return () => clearInterval(iv);
   }, [lines]);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 6 }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingBottom: 6,
+      }}
+    >
       <ActivityIndicator size="small" color={color} />
       <Text style={{ color: textColor, fontSize: 13, fontStyle: 'italic' }}>{lines[idx]}</Text>
     </View>
@@ -190,10 +243,29 @@ function ThinkingIndicator({ thread, color, textColor }: { thread: ChatThread; c
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
   title: { fontSize: 22, fontWeight: '800' },
   subtitle: { fontSize: 13, marginTop: 2 },
-  bubble: { maxWidth: '82%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 8 },
-  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: 1 },
+  bubble: {
+    maxWidth: '82%',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+  },
   input: { flex: 1, fontSize: 16, maxHeight: 120, paddingVertical: 8, paddingHorizontal: 4 },
 });

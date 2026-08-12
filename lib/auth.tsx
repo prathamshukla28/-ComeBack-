@@ -46,7 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  return <AuthCtx.Provider value={{ session, loading, signIn, signUp, signOut }}>{children}</AuthCtx.Provider>;
+  return (
+    <AuthCtx.Provider value={{ session, loading, signIn, signUp, signOut }}>
+      {children}
+    </AuthCtx.Provider>
+  );
 }
 
 export function useAuth(): AuthContextValue {

@@ -13,11 +13,15 @@ if (!url || !anon) {
   );
 }
 
-export const supabase = createClient(url ?? 'https://placeholder.supabase.co', anon ?? 'placeholder', {
-  auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false, // RN has no URL to detect
+export const supabase = createClient(
+  url ?? 'https://placeholder.supabase.co',
+  anon ?? 'placeholder',
+  {
+    auth: {
+      storage: AsyncStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false, // RN has no URL to detect
+    },
   },
-});
+);

@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
@@ -19,12 +29,16 @@ export default function LoginScreen() {
     }
     setBusy(true);
     try {
-      const { error } = mode === 'in' ? await signIn(email, password) : await signUp(email, password);
+      const { error } =
+        mode === 'in' ? await signIn(email, password) : await signUp(email, password);
       if (error) {
         Alert.alert(mode === 'in' ? 'Sign-in failed' : 'Sign-up failed', error);
       }
     } catch (e: any) {
-      Alert.alert('Network error', e?.message ?? 'Could not reach Supabase. Check your .env and internet.');
+      Alert.alert(
+        'Network error',
+        e?.message ?? 'Could not reach Supabase. Check your .env and internet.',
+      );
     } finally {
       setBusy(false);
     }
@@ -32,10 +46,15 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.background }]}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}
+      >
         <View style={styles.container}>
           <Text style={[styles.brand, { color: brand }]}>ComeBack</Text>
-          <Text style={[styles.tagline, { color: c.textMuted }]}>Track everything. Come back stronger.</Text>
+          <Text style={[styles.tagline, { color: c.textMuted }]}>
+            Track everything. Come back stronger.
+          </Text>
 
           <View style={{ height: 40 }} />
 
@@ -47,7 +66,10 @@ export default function LoginScreen() {
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
-            style={[styles.input, { backgroundColor: c.card, borderColor: c.border, color: c.text }]}
+            style={[
+              styles.input,
+              { backgroundColor: c.card, borderColor: c.border, color: c.text },
+            ]}
           />
           <TextInput
             placeholder="Password"
@@ -56,7 +78,10 @@ export default function LoginScreen() {
             onChangeText={setPassword}
             secureTextEntry
             autoComplete="password"
-            style={[styles.input, { backgroundColor: c.card, borderColor: c.border, color: c.text }]}
+            style={[
+              styles.input,
+              { backgroundColor: c.card, borderColor: c.border, color: c.text },
+            ]}
           />
 
           <Pressable
@@ -67,12 +92,16 @@ export default function LoginScreen() {
               { backgroundColor: brand, opacity: pressed || busy ? 0.7 : 1 },
             ]}
           >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{mode === 'in' ? 'Sign in' : 'Create account'}</Text>}
+            {busy ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.btnText}>{mode === 'in' ? 'Sign in' : 'Create account'}</Text>
+            )}
           </Pressable>
 
           <Pressable onPress={() => setMode(mode === 'in' ? 'up' : 'in')} style={styles.switchWrap}>
             <Text style={[styles.switch, { color: c.textMuted }]}>
-              {mode === 'in' ? "New here? Create an account" : 'Already have an account? Sign in'}
+              {mode === 'in' ? 'New here? Create an account' : 'Already have an account? Sign in'}
             </Text>
           </Pressable>
         </View>
@@ -95,7 +124,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 12,
   },
-  btn: { height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  btn: {
+    height: 52,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   switchWrap: { alignItems: 'center', marginTop: 20 },
   switch: { fontSize: 14 },

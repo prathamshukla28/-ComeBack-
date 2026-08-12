@@ -27,7 +27,9 @@ export default function Guru() {
         subtitle: 'Your no-BS personal trainer',
         systemPrompt: async () => {
           const [ctx, profile] = await Promise.all([last30dContext(), loadProfile()]);
-          const p = profile ? `Athlete profile: ${profile.display_name ?? ''}, goals: ${profile.goals ?? '—'}` : '';
+          const p = profile
+            ? `Athlete profile: ${profile.display_name ?? ''}, goals: ${profile.goals ?? '—'}`
+            : '';
           return `${SYSTEM_BASE}\n\n${p}\n\n${ctx}`;
         },
       }}

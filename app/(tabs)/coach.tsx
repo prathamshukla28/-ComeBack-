@@ -38,11 +38,19 @@ async function extractMemory(userMsg: string, reply: string) {
       `USER SAID:\n${userMsg}\n\nCOACH REPLIED:\n${reply}\n\nExtract facts.`,
     );
     if (!raw || raw.trim().toUpperCase().startsWith('NONE')) return;
-    const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+    const lines = raw
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
     for (const line of lines) {
       const idx = line.indexOf(':');
       if (idx < 3) continue;
-      const key = line.slice(0, idx).trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+      const key = line
+        .slice(0, idx)
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '');
       const value = line.slice(idx + 1).trim();
       if (!key || !value) continue;
       await upsertMemory(key, value);
@@ -60,8 +68,14 @@ export default function Coach() {
         title: 'Life Coach',
         subtitle: 'Remembers you. Grows with you.',
         systemPrompt: async () => {
-          const [ctx, profile, mem] = await Promise.all([last30dContext(), loadProfile(), loadCoachMemory()]);
-          const memBlock = mem.length ? `\n--- What I remember about you ---\n${mem.map((m) => `- ${m.key}: ${m.value}`).join('\n')}\n---` : '';
+          const [ctx, profile, mem] = await Promise.all([
+            last30dContext(),
+            loadProfile(),
+            loadCoachMemory(),
+          ]);
+          const memBlock = mem.length
+            ? `\n--- What I remember about you ---\n${mem.map((m) => `- ${m.key}: ${m.value}`).join('\n')}\n---`
+            : '';
           const p = profile
             ? `\n--- Profile ---\nName: ${profile.display_name ?? '—'}\nGoals: ${profile.goals ?? '—'}\nBio: ${profile.bio ?? '—'}\n---`
             : '';
