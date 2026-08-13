@@ -10,7 +10,7 @@ Only the `main` branch receives security updates. Please always run the latest r
 
 If you discover a vulnerability, report it privately via one of the following:
 
-- **GitHub Private Vulnerability Reporting** — https://github.com/prathamshukla28/-ComeBack-/security/advisories/new (preferred)
+- **GitHub Private Vulnerability Reporting** — <https://github.com/prathamshukla28/-ComeBack-/security/advisories/new> (preferred)
 - **Email** — reach the maintainer through the contact linked on their [GitHub profile](https://github.com/prathamshukla28)
 
 Include as much of the following as possible:

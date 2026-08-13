@@ -32,7 +32,7 @@ That's it. Don't open it yet.
 
 Supabase = your app's cloud database. Free tier is plenty.
 
-1. Go to https://supabase.com → **Start your project** → sign in with GitHub or email
+1. Go to <https://supabase.com> → **Start your project** → sign in with GitHub or email
 2. Click **New project**
 3. Fill in:
    - **Name**: `comeback`
@@ -67,7 +67,7 @@ Supabase = your app's cloud database. Free tier is plenty.
 
 Gemini = the AI for your Fitness Guru + Life Coach chats. Free tier: 1,500 messages/day.
 
-1. Go to https://aistudio.google.com/apikey → sign in with your Google account
+1. Go to <https://aistudio.google.com/apikey> → sign in with your Google account
 2. Click **Create API key** → **Create API key in new project**
 3. Copy the key (starts with `AIza...`) — you'll paste it into the app itself in Step 5
 
@@ -78,7 +78,7 @@ Gemini = the AI for your Fitness Guru + Life Coach chats. Free tier: 1,500 messa
 1. In the `ComeBack` folder on your Mac, create a file called `.env` (note the leading dot)
 2. Paste this into it, replacing the two placeholder values with what you copied in step 2b:
 
-   ```
+   ```dotenv
    EXPO_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
    EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...your-long-key...
    ```

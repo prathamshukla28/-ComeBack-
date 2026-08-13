@@ -32,7 +32,7 @@ All four must pass before opening a PR — the same gates run in CI.
 
 Examples:
 
-```
+```text
 feat(coach): add streak-aware daily prompt
 fix(auth): refresh session before biometric prompt
 docs(readme): document EAS preview workflow

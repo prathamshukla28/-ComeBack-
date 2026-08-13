@@ -8,6 +8,7 @@ A privacy-first habit and workout tracker with an AI coach — built with Expo, 
 
 [![CI](https://github.com/prathamshukla28/-ComeBack-/actions/workflows/ci.yml/badge.svg)](https://github.com/prathamshukla28/-ComeBack-/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/prathamshukla28/-ComeBack-/actions/workflows/codeql.yml/badge.svg)](https://github.com/prathamshukla28/-ComeBack-/actions/workflows/codeql.yml)
+[![Release Please](https://github.com/prathamshukla28/-ComeBack-/actions/workflows/release-please.yml/badge.svg)](https://github.com/prathamshukla28/-ComeBack-/actions/workflows/release-please.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Expo SDK 54](https://img.shields.io/badge/Expo-SDK%2054-000020?logo=expo&logoColor=white)](https://docs.expo.dev/versions/v54.0.0/)
 [![React Native](https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react&logoColor=white)](https://reactnative.dev/)
@@ -82,7 +83,7 @@ Full walk-through with Supabase provisioning and schema import lives in [`docs/S
 
 ## 📁 Project Structure
 
-```
+```text
 .
 ├── app/                    # expo-router file-based routes
 │   ├── (tabs)/             # Bottom-tab navigator
@@ -139,14 +140,22 @@ Full walk-through with Supabase provisioning and schema import lives in [`docs/S
 
 Every push and PR runs through:
 
-- ✅ TypeScript strict typecheck
-- ✅ ESLint (`eslint-config-expo` + Prettier compatibility)
-- ✅ Prettier formatting check
-- ✅ Jest unit tests with coverage
-- ✅ CodeQL security scanning (JavaScript/TypeScript)
-- ✅ Dependabot updates for npm and GitHub Actions
+- ✅ **TypeScript strict** — `tsc --noEmit` must be error-free
+- ✅ **ESLint** (`eslint-config-expo` + Prettier compatibility) — `--max-warnings=0`
+- ✅ **Prettier** formatting check
+- ✅ **Jest** — currently **37 tests** across `lib/env`, `lib/coach-messages`, `lib/queries` with coverage uploaded to Codecov
+- ✅ **markdownlint-cli2** — docs quality
+- ✅ **CodeQL** security scanning (JavaScript/TypeScript, `security-and-quality` query set)
+- ✅ **Dependabot** — grouped weekly updates for npm and GitHub Actions
+- ✅ **release-please** — automated CHANGELOG + version bumps from Conventional Commits
+- ✅ **Stale bot** — hygiene sweep for abandoned issues/PRs
+- ✅ **EAS Preview** (opt-in) — automated iOS/Android builds on PRs when `EXPO_TOKEN` is configured
 
-Locally, Husky wires the same guardrails into `pre-commit` (lint-staged) and `commit-msg` (commitlint).
+Locally, Husky wires the same guardrails into:
+
+- **pre-commit** — `lint-staged` runs ESLint + Prettier on staged files
+- **commit-msg** — `commitlint` enforces Conventional Commits
+- **pre-push** — full typecheck + test suite before anything leaves your machine
 
 ## 🤝 Contributing
 
