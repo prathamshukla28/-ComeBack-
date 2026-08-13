@@ -38,6 +38,7 @@ function Piece({ delay }: { delay: number }) {
         Animated.timing(opacity, { toValue: 0, duration: 600, useNativeDriver: true }),
       ]),
     ]).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot mount animation, deps are stable per-instance
   }, []);
 
   const rotate = rot.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
@@ -59,9 +60,12 @@ function Piece({ delay }: { delay: number }) {
 }
 
 export function Confetti({ visible, onDone }: { visible: boolean; onDone?: () => void }) {
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
   useEffect(() => {
     if (!visible) return;
-    const t = setTimeout(() => onDone?.(), 2500);
+    const t = setTimeout(() => onDoneRef.current?.(), 2500);
     return () => clearTimeout(t);
   }, [visible]);
   if (!visible) return null;

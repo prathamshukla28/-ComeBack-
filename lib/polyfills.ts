@@ -51,7 +51,10 @@ function patchAbortSignal() {
       sig.dispatchEvent({ type: 'abort', target: sig });
     } catch {}
   };
-  console.log('[ComeBack] AbortSignal patched');
+  if (__DEV__) {
+    // eslint-disable-next-line no-console -- dev-only polyfill signal
+    console.log('[ComeBack] AbortSignal patched');
+  }
 }
 
 patchAbortSignal();

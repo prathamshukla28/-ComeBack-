@@ -2,7 +2,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
-import { Button, Card, Empty, H1, H2, Input, P, Screen } from '@/components/ui';
+import { Button, Card, Empty, H1, Input, P, Screen } from '@/components/ui';
 import { habitCountToday, habitLast7Days, logHabit, undoLastHabit } from '@/lib/queries';
 import { getIntimacyPin, saveIntimacyPin } from '@/lib/secureStore';
 import { useTheme } from '@/lib/theme';

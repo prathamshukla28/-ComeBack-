@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, type TextStyle } from 'react-native';
 
 export function AnimatedNumber({
@@ -11,12 +11,15 @@ export function AnimatedNumber({
   duration?: number;
 }) {
   const [display, setDisplay] = useState(value);
+  const displayRef = useRef(value);
+  displayRef.current = display;
+
   useEffect(() => {
-    const start = display;
+    const start = displayRef.current;
     const delta = value - start;
     if (delta === 0) return;
     const startTs = Date.now();
-    let raf: any;
+    let raf = 0;
     const tick = () => {
       const t = Math.min(1, (Date.now() - startTs) / duration);
       const eased = 1 - Math.pow(1 - t, 3);
@@ -25,6 +28,7 @@ export function AnimatedNumber({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [value]);
+  }, [value, duration]);
+
   return <Text style={style}>{display}</Text>;
 }
