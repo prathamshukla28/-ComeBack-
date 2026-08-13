@@ -1,1 +1,13 @@
-{ "recommendations": ["expo.vscode-expo-tools"] }
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "expo.vscode-expo-tools",
+    "editorconfig.editorconfig",
+    "orta.vscode-jest",
+    "streetsidesoftware.code-spell-checker",
+    "yoavbls.pretty-ts-errors",
+    "gruntfuggly.todo-tree",
+    "supabase.vscode-supabase-extension"
+  ]
+}
