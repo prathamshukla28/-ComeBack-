@@ -1,6 +1,6 @@
 {
   "name": "comeback",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Habit and workout tracker with an AI coach — built with Expo, React Native, and Supabase.",
   "author": "Pratham Shukla <https://github.com/prathamshukla28>",
   "license": "MIT",
