@@ -1,0 +1,39 @@
+# https://docs.codecov.com/docs/codecovyml-reference
+codecov:
+  require_ci_to_pass: true
+  notify:
+    wait_for_ci: true
+
+coverage:
+  precision: 2
+  round: down
+  range: '60...90'
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        base: auto
+        informational: false
+    patch:
+      default:
+        target: 80%
+        threshold: 1%
+        informational: false
+
+comment:
+  layout: 'reach,diff,flags,tree,footer'
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+
+ignore:
+  - 'app/(tabs)/**' # UI screens covered by e2e later, not unit
+  - 'components/**' # RN components — deferred to visual regression
+  - '**/*.d.ts'
+  - 'stubs/**'
+  - 'polyfills-early.js'
+  - 'index.js'
+  - '**/__tests__/**'
+  - 'jest.setup.ts'

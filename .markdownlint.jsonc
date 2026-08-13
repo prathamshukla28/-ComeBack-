@@ -1,0 +1,9 @@
+{
+  // https://github.com/DavidAnson/markdownlint/blob/main/schema/.markdownlint.jsonc
+  "default": true,
+  "MD013": false, // line length — README has long badge lines
+  "MD024": { "siblings_only": true },
+  "MD033": false, // inline HTML allowed (used in README hero)
+  "MD041": false, // first line doesn't need to be H1 (badges block first)
+  "MD046": { "style": "fenced" },
+}

@@ -44,6 +44,9 @@ jobs:
       - name: Test with coverage
         run: npm run test:coverage -- --ci --maxWorkers=2
 
+      - name: Markdown lint (docs quality)
+        run: npx --yes markdownlint-cli2 "**/*.md" "#node_modules" "#CHANGELOG.md"
+
       - name: Upload coverage artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -51,3 +54,12 @@ jobs:
           name: coverage-${{ github.run_id }}
           path: coverage/
           retention-days: 7
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/lcov.info
+          fail_ci_if_error: false
+          verbose: false

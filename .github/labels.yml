@@ -1,0 +1,87 @@
+# Canonical label set. Applied by .github/workflows/sync-labels.yml
+# Format: https://github.com/EndBug/label-sync#config-file
+
+# ── Type ────────────────────────────────────────────────────────────────
+- name: bug
+  color: d73a4a
+  description: Something isn't working
+- name: enhancement
+  color: a2eeef
+  description: New feature or request
+- name: documentation
+  color: 0075ca
+  description: Improvements or additions to docs
+- name: refactor
+  color: fbca04
+  description: Code change that neither fixes a bug nor adds a feature
+- name: performance
+  color: fef2c0
+  description: Performance-related change
+- name: test
+  color: bfe5bf
+  description: Adding or updating tests
+- name: chore
+  color: cfd3d7
+  description: Tooling, build, or repo hygiene
+- name: security
+  color: b60205
+  description: Security-related change or report
+
+# ── Status ──────────────────────────────────────────────────────────────
+- name: triage
+  color: ededed
+  description: Awaiting maintainer review
+- name: needs info
+  color: fbca04
+  description: More information needed from the reporter
+- name: blocked
+  color: b60205
+  description: Blocked by another issue or external factor
+- name: wontfix
+  color: ffffff
+  description: This will not be worked on
+- name: duplicate
+  color: cfd3d7
+  description: This issue or pull request already exists
+- name: invalid
+  color: e4e669
+  description: Not a valid bug or request
+
+# ── Difficulty ──────────────────────────────────────────────────────────
+- name: good first issue
+  color: 7057ff
+  description: Good for newcomers
+- name: help wanted
+  color: 008672
+  description: Extra attention is needed
+
+# ── Area ────────────────────────────────────────────────────────────────
+- name: area/app
+  color: c5def5
+  description: Screens and routes under app/
+- name: area/components
+  color: c5def5
+  description: UI primitives under components/
+- name: area/lib
+  color: c5def5
+  description: Non-UI logic under lib/
+- name: area/db
+  color: c5def5
+  description: Supabase schema under db/
+- name: area/ci
+  color: c5def5
+  description: GitHub Actions and CI config
+- name: area/docs
+  color: c5def5
+  description: Documentation
+
+# ── Dependencies (Dependabot) ───────────────────────────────────────────
+- name: dependencies
+  color: 0366d6
+  description: Pull requests that update a dependency file
+- name: npm
+  color: cb3837
+  description: npm ecosystem
+- name: github-actions
+  color: 2088ff
+  description: GitHub Actions ecosystem

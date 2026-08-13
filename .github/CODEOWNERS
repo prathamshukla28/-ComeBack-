@@ -1,0 +1,26 @@
+# CODEOWNERS — automatic reviewer assignment.
+# https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global fallback owner
+*                              @prathamshukla28
+
+# Native app surface
+/app/                          @prathamshukla28
+/components/                   @prathamshukla28
+
+# Data + integrations
+/lib/                          @prathamshukla28
+/db/                           @prathamshukla28
+
+# Tooling, CI, and repo hygiene
+/.github/                      @prathamshukla28
+/.husky/                       @prathamshukla28
+/*.config.*                    @prathamshukla28
+/.eslintrc.*                   @prathamshukla28
+/.prettierrc                   @prathamshukla28
+/package.json                  @prathamshukla28
+/tsconfig.json                 @prathamshukla28
+
+# Documentation
+/README.md                     @prathamshukla28
+/docs/                         @prathamshukla28
