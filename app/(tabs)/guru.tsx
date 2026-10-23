@@ -1,5 +1,6 @@
 import { Chat } from '@/components/Chat';
 import { last30dContext, loadProfile } from '@/lib/queries';
+import { askCoach, ragEnabled } from '@/lib/rag';
 
 const SYSTEM_BASE = `You are the FITNESS GURU inside "ComeBack" — a no-BS, high-intensity personal trainer.
 
@@ -25,6 +26,9 @@ export default function Guru() {
         thread: 'guru',
         title: 'Fitness Guru',
         subtitle: 'Your no-BS personal trainer',
+        // When the RAG service is configured, retrieve curated exercise knowledge +
+        // the user's own history server-side instead of dumping the last 30 days.
+        ask: ragEnabled() ? async (text) => (await askCoach('guru', text)).answer : undefined,
         systemPrompt: async () => {
           const [ctx, profile] = await Promise.all([last30dContext(), loadProfile()]);
           const p = profile

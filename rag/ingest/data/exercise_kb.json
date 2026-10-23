@@ -1,0 +1,122 @@
+[
+  {
+    "slug": "squat-setup",
+    "title": "Barbell Squat — setup & form",
+    "section": "form",
+    "muscle_group": "legs",
+    "source": "ComeBack curated KB",
+    "content": "Barbell back squat: bar on the upper traps (high bar) or rear delts (low bar). Feet about shoulder-width, toes slightly out. Brace the core as if about to be punched, break at the hips and knees together, and descend until the hip crease passes below the top of the knee (depth to full range if mobility allows). Drive the floor away through mid-foot, keeping knees tracking over toes. Common faults: knees caving in (cue 'spread the floor'), heels lifting (ankle mobility or too-narrow stance), and losing the brace at the bottom."
+  },
+  {
+    "slug": "squat-programming",
+    "title": "Squat — programming for strength & hypertrophy",
+    "section": "programming",
+    "muscle_group": "legs",
+    "source": "ComeBack curated KB",
+    "content": "For strength, work in the 3–6 rep range at 80–90% 1RM, 3–5 sets, with 2–4 minutes rest. For hypertrophy, 6–12 reps at 65–80% 1RM, stopping 1–3 reps shy of failure (RIR 1–3). Squatting 2–3x/week drives faster progress than once weekly for most lifters. Add ~2.5kg when you hit the top of your rep range with good form across all sets; if bar speed stalls for two sessions, hold weight or deload 10%."
+  },
+  {
+    "slug": "bench-setup",
+    "title": "Bench Press — setup & form",
+    "section": "form",
+    "muscle_group": "chest",
+    "source": "ComeBack curated KB",
+    "content": "Bench press: eyes under the bar, shoulder blades retracted and tucked down, slight arch in the upper back, feet planted. Lower the bar to the lower chest/sternum with elbows at roughly 45–75 degrees (not flared to 90). Touch, then press back over the shoulders in a slight J-curve. Keep wrists stacked over the elbows. Always use a spotter or safety pins for heavy sets — a failed rep pins the bar on the chest."
+  },
+  {
+    "slug": "deadlift-setup",
+    "title": "Deadlift — setup & form",
+    "section": "form",
+    "muscle_group": "back",
+    "source": "ComeBack curated KB",
+    "content": "Conventional deadlift: bar over mid-foot, hips higher than knees, chest up, lats engaged ('protect the armpits'). Set the back flat and neutral, take slack out of the bar, then push the floor away and stand tall — bar travels in a straight vertical line close to the body. Do not jerk the bar or let the lower back round under load. Reset each rep rather than bouncing. Mixed or hook grip helps once grip becomes the limiter."
+  },
+  {
+    "slug": "deadlift-safety",
+    "title": "Deadlift — lower-back safety",
+    "section": "safety",
+    "muscle_group": "back",
+    "source": "ComeBack curated KB",
+    "content": "Lower-back pain during deadlifts usually comes from a rounded lumbar spine under load, hips shooting up first (turning it into a stiff-leg pull), or loads ramped too fast. Fix: film a set from the side, keep the spine neutral, drive hips and shoulders up together. If you feel sharp or radiating pain, stop and see a professional — fatigue-related stiffness is different from injury."
+  },
+  {
+    "slug": "progressive-overload",
+    "title": "Progressive overload",
+    "section": "programming",
+    "muscle_group": null,
+    "source": "ComeBack curated KB",
+    "content": "Progressive overload means gradually increasing the demand on a muscle over time — more weight, more reps, more sets, better control, or less rest. You do not need to add weight every session. Adding a rep or two at the same load, or a cleaner rep at the same weight, is progress. Track your sets so you can beat last week's numbers. Over months, trend matters more than any single workout."
+  },
+  {
+    "slug": "rir-rpe",
+    "title": "RIR and RPE — gauging effort",
+    "section": "programming",
+    "muscle_group": null,
+    "source": "ComeBack curated KB",
+    "content": "RIR (reps in reserve) is how many reps you could still do at the end of a set. RPE is 10 minus RIR. Most hypertrophy training lives at RIR 1–3 (RPE 7–9): hard, but not grinding to failure every set. Training to true failure constantly raises fatigue and hurts recovery without much extra growth. Save RIR 0 for the last set of an exercise, occasionally."
+  },
+  {
+    "slug": "deload",
+    "title": "When and how to deload",
+    "section": "programming",
+    "muscle_group": null,
+    "source": "ComeBack curated KB",
+    "content": "Deload when performance stalls or drops for ~2 weeks, joints ache, sleep/appetite suffer, or motivation craters — signs of accumulated fatigue. A deload week typically cuts volume by ~40–50% or intensity by ~10–20% for one week, keeping movement patterns. You come back fresher and usually stronger. Planned deloads every 4–8 weeks prevent the stall in the first place."
+  },
+  {
+    "slug": "warmup",
+    "title": "Warming up for lifting",
+    "section": "programming",
+    "muscle_group": null,
+    "source": "ComeBack curated KB",
+    "content": "Warm up with 5 minutes of light cardio to raise core temperature, then do ramp-up sets of the first exercise: e.g. empty bar x10, then 40%/60%/80% of your working weight for a few reps each. This primes the nervous system and groove without fatiguing you. Skip lengthy static stretching before heavy lifting — save mobility work for after or separate sessions."
+  },
+  {
+    "slug": "push-pull-legs",
+    "title": "Push / Pull / Legs split",
+    "section": "programming",
+    "muscle_group": null,
+    "source": "ComeBack curated KB",
+    "content": "Push/Pull/Legs groups training by movement: Push (chest, shoulders, triceps), Pull (back, biceps), Legs (quads, hamstrings, calves). Run it 3 days/week (each once) or 6 days/week (each twice) for more volume. It scales well and keeps related muscles together so you manage fatigue per session. A simple 3-day full-body routine is a better starting point for beginners."
+  },
+  {
+    "slug": "protein-intake",
+    "title": "Protein for muscle growth",
+    "section": "nutrition",
+    "muscle_group": null,
+    "source": "ComeBack curated KB",
+    "content": "For building muscle, aim for roughly 1.6–2.2 g of protein per kg of bodyweight per day, spread across 3–5 meals. Total daily protein matters most; timing is secondary. In a fat-loss phase, keep protein at the higher end to preserve muscle. This is general guidance, not medical or dietary prescription — adjust with a professional if you have health conditions."
+  },
+  {
+    "slug": "shoulder-pain-pressing",
+    "title": "Shoulder discomfort when pressing",
+    "section": "safety",
+    "muscle_group": "shoulders",
+    "source": "ComeBack curated KB",
+    "content": "Front-of-shoulder pain in bench or overhead press often links to flaring the elbows too wide, benching with no scapular retraction, or too much volume with no rear-delt/upper-back work. Try tucking the elbows more, adding face pulls and rows, and reducing pressing volume briefly. Sharp or persistent joint pain warrants a physio — this is coaching guidance, not a medical diagnosis."
+  },
+  {
+    "slug": "rest-between-sets",
+    "title": "Rest periods between sets",
+    "section": "programming",
+    "muscle_group": null,
+    "source": "ComeBack curated KB",
+    "content": "Rest 2–4 minutes between heavy compound sets (squat, bench, deadlift, press) so strength and form recover. For isolation or higher-rep hypertrophy work, 60–120 seconds is enough. Rushing rest on big lifts drops your reps and quality; it does not meaningfully speed up growth. Use the clock, not how you feel."
+  },
+  {
+    "slug": "exercise-swaps",
+    "title": "Swapping exercises around niggles",
+    "section": "programming",
+    "muscle_group": null,
+    "source": "ComeBack curated KB",
+    "content": "If a movement aggravates a joint, swap to a similar pattern that trains the same muscles pain-free: back squat → front squat, leg press, or hack squat; barbell bench → dumbbell press or weighted dip; conventional deadlift → trap-bar deadlift or Romanian deadlift. Keep training the muscle group; just change the tool. Don't train through sharp pain."
+  },
+  {
+    "slug": "sleep-recovery",
+    "title": "Sleep and recovery",
+    "section": "recovery",
+    "muscle_group": null,
+    "source": "ComeBack curated KB",
+    "content": "Muscle is built during recovery, not in the gym. Aim for 7–9 hours of sleep; chronic short sleep blunts strength, recovery, and appetite control. Alcohol the night before impairs sleep quality and next-day performance. If you're not progressing despite good training, look at sleep, stress, and total food before adding more sets."
+  }
+]
