@@ -23,6 +23,12 @@ export interface ChatConfig {
   title: string;
   subtitle: string;
   systemPrompt: () => Promise<string> | string;
+  /**
+   * Optional override for producing the assistant reply. When provided, it runs
+   * instead of the direct Gemini call — used to route through the RAG service.
+   * Falls back to `systemPrompt` + Gemini when omitted.
+   */
+  ask?: (userMessage: string, history: ChatTurn[]) => Promise<string>;
   /** Called after each assistant reply, e.g. to extract long-term memory */
   onAfterReply?: (userMessage: string, modelReply: string) => void | Promise<void>;
 }
@@ -50,12 +56,13 @@ export function Chat({ config }: { config: ChatConfig }) {
       qc.invalidateQueries({ queryKey: ['chat', config.thread] });
       setThinking(true);
       try {
-        const sys = await config.systemPrompt();
         const turns: ChatTurn[] = (history.data ?? []).map((m: any) => ({
           role: m.role === 'user' ? 'user' : 'model',
           text: m.content,
         }));
-        const reply = await sendMessage(sys, turns, text);
+        const reply = config.ask
+          ? await config.ask(text, turns)
+          : await sendMessage(await config.systemPrompt(), turns, text);
         await saveMessage(config.thread, 'model', reply);
         // fire-and-forget post-reply hook
         if (config.onAfterReply) {

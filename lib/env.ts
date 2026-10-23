@@ -4,6 +4,9 @@ const EnvSchema = z.object({
   EXPO_PUBLIC_SUPABASE_URL: z.string().url({ message: 'Must be a valid https URL' }),
   EXPO_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20, 'Anon key looks too short'),
   EXPO_PUBLIC_GEMINI_API_KEY: z.string().min(10).optional(),
+  // Optional: base URL of the Python RAG service (rag/). When set, the Guru tab
+  // routes questions through retrieval-augmented grounding. Unset = direct Gemini.
+  EXPO_PUBLIC_RAG_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
@@ -12,6 +15,7 @@ const raw = {
   EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
   EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
   EXPO_PUBLIC_GEMINI_API_KEY: process.env.EXPO_PUBLIC_GEMINI_API_KEY,
+  EXPO_PUBLIC_RAG_URL: process.env.EXPO_PUBLIC_RAG_URL,
 };
 
 const parsed = EnvSchema.safeParse(raw);

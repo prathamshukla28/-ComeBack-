@@ -27,7 +27,7 @@ A privacy-first habit and workout tracker with an AI coach — built with Expo, 
 - 📊 **Daily dashboard** — one-glance view of today's sets, streaks, and habits
 - 🏋️ **Workout tracker** — log sets, reps, weights; visualize progression
 - 🧘 **Habit journal** — track cigarettes, alcohol, intimacy with clean-streak counters
-- 🧠 **AI Coach** — conversational check-ins powered by Google Gemini
+- 🧠 **AI Coach** — conversational check-ins powered by Google Gemini, with optional RAG grounding (curated exercise KB + your own history via pgvector)
 - 🔒 **Biometric lock** — Face ID / Touch ID gate for sensitive tabs
 - 🔔 **Local notifications** — gentle nudges when your streaks are on the line
 - 🎨 **Adaptive theming** — polished light and dark palettes
@@ -51,7 +51,7 @@ A privacy-first habit and workout tracker with an AI coach — built with Expo, 
 | **Routing**   | [expo-router](https://docs.expo.dev/router/introduction/) (file-based)                     |
 | **State**     | [Zustand](https://github.com/pmndrs/zustand), [TanStack Query](https://tanstack.com/query) |
 | **Data**      | [Supabase](https://supabase.com/) (Postgres, Auth, RLS)                                    |
-| **AI**        | Google Gemini via `lib/gemini.ts`                                                          |
+| **AI**        | Google Gemini (`lib/gemini.ts`); optional RAG service in `rag/`                            |
 | **Animation** | `react-native-reanimated` v4 + Worklets                                                    |
 | **Storage**   | `expo-secure-store`, `@react-native-async-storage/async-storage`                           |
 | **Quality**   | ESLint, Prettier, Husky, lint-staged, commitlint, Jest, GitHub Actions, CodeQL, Dependabot |
@@ -113,8 +113,9 @@ Full walk-through with Supabase provisioning and schema import lives in [`docs/S
 │   ├── secureStore.ts      # expo-secure-store helpers
 │   └── env.ts              # zod-validated env
 ├── constants/              # Design tokens (colors)
-├── db/                     # SQL schema for Supabase
-├── docs/                   # Extended documentation
+├── db/                     # SQL schema for Supabase (schema.sql + rag.sql / pgvector)
+├── rag/                    # Python FastAPI RAG service (embeddings + pgvector + Gemini)
+├── docs/                   # Extended documentation (incl. RAG.md)
 ├── .github/                # Workflows, templates, dependabot
 └── assets/                 # Fonts, icons, images
 ```
