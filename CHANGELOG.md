@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/prathamshukla28/-ComeBack-/compare/comeback-v1.0.1...comeback-v1.1.0) (2026-10-23)
+
+
+### Features
+
+* add Python RAG service (pgvector + Gemini) for AI coach ([#39](https://github.com/prathamshukla28/-ComeBack-/issues/39)) ([dc7fddf](https://github.com/prathamshukla28/-ComeBack-/commit/dc7fddfc1a70c97ff9990c0cd65937fb17919f1c))
+
 ## [1.0.1](https://github.com/prathamshukla28/-ComeBack-/compare/comeback-v1.0.0...comeback-v1.0.1) (2026-08-13)
 
 
