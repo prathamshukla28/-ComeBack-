@@ -15,3 +15,4 @@ pnpm-lock.yaml
 *.md.tpl
 expo-env.d.ts
 polyfills-early.js
+CHANGELOG.md
