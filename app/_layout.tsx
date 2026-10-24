@@ -11,6 +11,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/components/useColorScheme';
 import LoginScreen from './login';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { SubscriptionProvider } from '@/lib/subscription';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -37,7 +38,9 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <RootLayoutNav />
+        <SubscriptionProvider>
+          <RootLayoutNav />
+        </SubscriptionProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
@@ -59,6 +62,7 @@ function RootLayoutNav() {
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="paywall" options={{ presentation: 'modal', title: 'ComeBack Pro' }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
         </Stack>
       )}

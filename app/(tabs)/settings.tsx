@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Linking, View } from 'react-native';
 import { Button, Card, H1, H2, Input, P, Screen } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
+import { useSubscription } from '@/lib/subscription';
 import {
   clearAllReminders,
   requestNotificationPermission,
@@ -13,6 +15,7 @@ import { clearGeminiKey, getGeminiKey, saveGeminiKey } from '@/lib/secureStore';
 
 export default function Settings() {
   const { session, signOut } = useAuth();
+  const { isPro, restore } = useSubscription();
   const qc = useQueryClient();
   const profile = useQuery({ queryKey: ['profile'], queryFn: loadProfile });
 
@@ -78,6 +81,28 @@ export default function Settings() {
       <H1>Settings</H1>
       <P muted>{session?.user.email}</P>
       <View style={{ height: 20 }} />
+
+      <Card elevated>
+        <H2>{isPro ? 'ComeBack Pro ✓' : 'ComeBack Pro'}</H2>
+        <P muted>
+          {isPro
+            ? 'Thanks for your support — every premium feature is unlocked.'
+            : 'Unlock the AI Life Coach, RAG-grounded Guru, full history, and unlimited habits.'}
+        </P>
+        <View style={{ height: 12 }} />
+        {isPro ? (
+          <Button
+            title="Restore purchases"
+            variant="secondary"
+            onPress={async () => {
+              const ok = await restore();
+              Alert.alert(ok ? 'Restored' : 'Nothing to restore');
+            }}
+          />
+        ) : (
+          <Button title="Upgrade to Pro" icon="sparkles" onPress={() => router.push('/paywall')} />
+        )}
+      </Card>
 
       <Card>
         <H2>About you</H2>

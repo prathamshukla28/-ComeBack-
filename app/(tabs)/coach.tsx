@@ -1,6 +1,9 @@
+import { ActivityIndicator, View } from 'react-native';
 import { Chat } from '@/components/Chat';
+import { Paywall } from '@/components/Paywall';
 import { generateOnce } from '@/lib/gemini';
 import { last30dContext, loadCoachMemory, loadProfile, upsertMemory } from '@/lib/queries';
+import { useSubscription } from '@/lib/subscription';
 
 const SYSTEM_BASE = `You are the LIFE COACH inside "ComeBack" — a warm, wise, deeply personal confidant.
 
@@ -61,6 +64,20 @@ async function extractMemory(userMsg: string, reply: string) {
 }
 
 export default function Coach() {
+  const { isPro, loading } = useSubscription();
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!isPro) {
+    return <Paywall feature="the Life Coach" />;
+  }
+
   return (
     <Chat
       config={{
