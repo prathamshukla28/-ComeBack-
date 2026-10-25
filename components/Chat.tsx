@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { sendMessage, type ChatTurn } from '@/lib/gemini';
 import { clearThread, loadThread, saveMessage, type ChatThread } from '@/lib/queries';
+import { CRISIS_RESOURCES, detectCrisis } from '@/lib/safety';
 import { useTheme } from '@/lib/theme';
 
 export interface ChatConfig {
@@ -54,6 +55,14 @@ export function Chat({ config }: { config: ChatConfig }) {
     mutationFn: async (text: string) => {
       await saveMessage(config.thread, 'user', text);
       qc.invalidateQueries({ queryKey: ['chat', config.thread] });
+
+      // Safety gate: a self-harm signal never reaches the LLM. Reply with vetted
+      // human crisis resources instead, and skip any post-reply processing.
+      if (detectCrisis(text)) {
+        await saveMessage(config.thread, 'model', CRISIS_RESOURCES);
+        return CRISIS_RESOURCES;
+      }
+
       setThinking(true);
       try {
         const turns: ChatTurn[] = (history.data ?? []).map((m: any) => ({
@@ -100,6 +109,8 @@ export function Chat({ config }: { config: ChatConfig }) {
           <Text style={[styles.subtitle, { color: c.textMuted }]}>{config.subtitle}</Text>
         </View>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Clear conversation"
           onPress={() =>
             Alert.alert('Clear conversation?', 'This deletes all messages in this chat.', [
               { text: 'Cancel', style: 'cancel' },
@@ -183,6 +194,9 @@ export function Chat({ config }: { config: ChatConfig }) {
             editable={!send.isPending}
           />
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
+            accessibilityState={{ disabled: !input.trim() || send.isPending }}
             onPress={submit}
             disabled={!input.trim() || send.isPending}
             style={({ pressed }) => ({

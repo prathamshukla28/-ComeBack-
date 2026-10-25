@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Button, Card, Empty, H1, Input, P, Screen } from '@/components/ui';
 import { habitCountToday, habitLast7Days, logHabit, undoLastHabit } from '@/lib/queries';
-import { getIntimacyPin, saveIntimacyPin } from '@/lib/secureStore';
+import { hasPin, setPin, verifyPin } from '@/lib/pin';
 import { useTheme } from '@/lib/theme';
 
 export default function Intimacy() {
@@ -15,8 +15,8 @@ export default function Intimacy() {
 
   useEffect(() => {
     (async () => {
-      const savedPin = await getIntimacyPin();
-      if (!savedPin) {
+      const configured = await hasPin();
+      if (!configured) {
         setNeedsPinSetup(true);
         setChecking(false);
         return;
@@ -40,20 +40,29 @@ export default function Intimacy() {
 
   const savePin = async () => {
     if (pinInput.length < 4) return Alert.alert('PIN too short', 'Use at least 4 digits.');
-    await saveIntimacyPin(pinInput);
+    await setPin(pinInput);
     setPinInput('');
     setNeedsPinSetup(false);
     setUnlocked(true);
   };
 
   const tryPin = async () => {
-    const saved = await getIntimacyPin();
-    if (pinInput === saved) {
+    const res = await verifyPin(pinInput);
+    setPinInput('');
+    if (res.ok) {
       setUnlocked(true);
-      setPinInput('');
+      return;
+    }
+    if (res.lockedUntil) {
+      const secs = Math.max(1, Math.ceil((res.lockedUntil - Date.now()) / 1000));
+      Alert.alert('Too many attempts', `Locked for ${secs}s. Take a breath.`);
+    } else if (res.attemptsLeft != null) {
+      Alert.alert(
+        'Wrong PIN',
+        `${res.attemptsLeft} attempt${res.attemptsLeft === 1 ? '' : 's'} left.`,
+      );
     } else {
       Alert.alert('Wrong PIN');
-      setPinInput('');
     }
   };
 

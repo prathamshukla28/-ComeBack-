@@ -3,6 +3,7 @@ import { Chat } from '@/components/Chat';
 import { Paywall } from '@/components/Paywall';
 import { generateOnce } from '@/lib/gemini';
 import { last30dContext, loadCoachMemory, loadProfile, upsertMemory } from '@/lib/queries';
+import { SAFETY_PREAMBLE } from '@/lib/safety';
 import { useSubscription } from '@/lib/subscription';
 
 const SYSTEM_BASE = `You are the LIFE COACH inside "ComeBack" — a warm, wise, deeply personal confidant.
@@ -96,7 +97,7 @@ export default function Coach() {
           const p = profile
             ? `\n--- Profile ---\nName: ${profile.display_name ?? '—'}\nGoals: ${profile.goals ?? '—'}\nBio: ${profile.bio ?? '—'}\n---`
             : '';
-          return `${SYSTEM_BASE}${p}${memBlock}\n\n${ctx}`;
+          return `${SYSTEM_BASE}${SAFETY_PREAMBLE}${p}${memBlock}\n\n${ctx}`;
         },
         onAfterReply: extractMemory,
       }}
