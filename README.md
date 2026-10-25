@@ -27,8 +27,12 @@ A privacy-first habit and workout tracker with an AI coach — built with Expo, 
 - 📊 **Daily dashboard** — one-glance view of today's sets, streaks, and habits
 - 🏋️ **Workout tracker** — log sets, reps, weights; visualize progression
 - 🧘 **Habit journal** — track cigarettes, alcohol, intimacy with clean-streak counters
+- 🔁 **Relapse-aware streaks** — a lapse never cold-resets you to zero; it reframes the broken run against your personal best and nudges you to rebuild
+- 📈 **Trends** — week-over-week deltas and sparklines for habits and workouts, colour-coded toward your goal
+- 📡 **Offline-safe logging** — a tap on a flaky connection is persisted to a durable outbox and replayed on reconnect; logs are never lost
+- 🛟 **Coach safety net** — self-harm signals short-circuit the LLM and surface vetted crisis resources (988 / Samaritans / findahelpline) instead
 - 🧠 **AI Coach** — conversational check-ins powered by Google Gemini, with optional RAG grounding (curated exercise KB + your own history via pgvector)
-- 🔒 **Biometric lock** — Face ID / Touch ID gate for sensitive tabs
+- 🔒 **Biometric lock** — Face ID / Touch ID gate for sensitive tabs, with a salted-hashed, rate-limited PIN fallback
 - 🔔 **Local notifications** — gentle nudges when your streaks are on the line
 - 🎨 **Adaptive theming** — polished light and dark palettes
 - 🎉 **Delightful micro-interactions** — haptics, animated numbers, confetti wins
@@ -144,7 +148,7 @@ Every push and PR runs through:
 - ✅ **TypeScript strict** — `tsc --noEmit` must be error-free
 - ✅ **ESLint** (`eslint-config-expo` + Prettier compatibility) — `--max-warnings=0`
 - ✅ **Prettier** formatting check
-- ✅ **Jest** — currently **37 tests** across `lib/env`, `lib/coach-messages`, `lib/queries` with coverage uploaded to Codecov
+- ✅ **Jest** — currently **100 tests** across `lib/` logic (`env`, `coach-messages`, `queries`, `purchases`, `streaks`, `safety`, `pin`, `outbox`, `insights`) and `components/` UI (`Button`, `EnvBanner`), with coverage uploaded to Codecov
 - ✅ **markdownlint-cli2** — docs quality
 - ✅ **CodeQL** security scanning (JavaScript/TypeScript, `security-and-quality` query set)
 - ✅ **Dependabot** — grouped weekly updates for npm and GitHub Actions

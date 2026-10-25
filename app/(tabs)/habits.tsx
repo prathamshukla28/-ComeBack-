@@ -7,15 +7,16 @@ import { Button, Card, H1, H2, P, Screen } from '@/components/ui';
 import {
   alcoholMessage,
   cigaretteMessage,
+  relapseMessage,
   type CoachMessage,
   type Vibe,
 } from '@/lib/coach-messages';
 import { heavy, success, warn as hapticWarn } from '@/lib/haptics';
 import {
-  cleanStreak,
+  cleanStreakStats,
   habitCountToday,
   habitLast7Days,
-  logHabit,
+  logHabitResilient,
   undoLastHabit,
   type HabitKind,
 } from '@/lib/queries';
@@ -52,7 +53,7 @@ function HabitBlock({
   const week = useQuery({ queryKey: ['habit', kind, '7d'], queryFn: () => habitLast7Days(kind) });
   const streak = useQuery({
     queryKey: ['habit', kind, 'streak'],
-    queryFn: () => cleanStreak(kind),
+    queryFn: () => cleanStreakStats(kind),
   });
   const [flash, setFlash] = useState<CoachMessage | null>(null);
   const [confetti, setConfetti] = useState(false);
@@ -60,13 +61,16 @@ function HabitBlock({
   const inv = () => qc.invalidateQueries({ queryKey: ['habit', kind] });
 
   const add = useMutation({
-    mutationFn: () => logHabit(kind, 1),
-    onSuccess: () => {
+    mutationFn: () => logHabitResilient(kind, 1),
+    onSuccess: (res) => {
       inv();
       const newCount = (today.data ?? 0) + 1;
-      const msg = messageFn(newCount);
+      const msg = res.queued
+        ? { text: 'Saved offline — will sync when you reconnect.', vibe: 'ok' as Vibe, emoji: '📡' }
+        : messageFn(newCount);
       setFlash(msg);
       setTimeout(() => setFlash(null), 6000);
+      if (res.queued) return;
       if (positive) {
         success();
         setConfetti(true);
@@ -89,8 +93,16 @@ function HabitBlock({
   const activeMsg = flash ?? contextMsg;
   const weekTotal = (week.data ?? []).reduce((s, d) => s + d.total, 0);
   const maxBar = Math.max(1, ...(week.data ?? []).map((d) => d.total));
-  const cleanDays = streak.data ?? 0;
-  const showStreak = currentCount === 0 && cleanDays > 0 && cleanDays < 999;
+
+  const stats = streak.data;
+  const cleanDays = stats?.current ?? 0;
+  const record = stats?.previousBest ?? 0;
+  // Clean today → encourage the current run (and flag a new personal record).
+  const showStreak = !positive && currentCount === 0 && cleanDays > 0 && stats?.everTracked;
+  const isRecordRun = cleanDays >= record && record > 0;
+  // Relapsed today → reframe the broken run instead of a cold reset to zero.
+  const showRelapse = !positive && currentCount > 0 && (stats?.relapsedToday ?? false);
+  const relapse = showRelapse ? relapseMessage(stats?.brokenStreak ?? 0, record) : null;
 
   return (
     <Card>
@@ -120,7 +132,29 @@ function HabitBlock({
       {showStreak && (
         <View style={{ alignItems: 'center', marginBottom: 12 }}>
           <P style={{ color: c.success, fontWeight: '700' }}>
-            🏆 {cleanDays} clean day{cleanDays > 1 ? 's' : ''} — don't break it
+            {isRecordRun ? '👑' : '🏆'} {cleanDays} clean day{cleanDays > 1 ? 's' : ''}
+            {isRecordRun ? ' — your best ever, keep going' : " — don't break it"}
+          </P>
+          {!isRecordRun && record > 0 && (
+            <P style={{ color: c.textMuted, fontSize: 12, marginTop: 2 }}>
+              {record - cleanDays} to beat your record of {record}
+            </P>
+          )}
+        </View>
+      )}
+      {relapse && (
+        <View
+          style={{
+            backgroundColor: c.background,
+            borderLeftWidth: 3,
+            borderLeftColor: vibeColor(relapse.vibe, c),
+            padding: 12,
+            borderRadius: 8,
+            marginBottom: 12,
+          }}
+        >
+          <P style={{ color: vibeColor(relapse.vibe, c), fontWeight: '600' }}>
+            {relapse.emoji} {relapse.text}
           </P>
         </View>
       )}

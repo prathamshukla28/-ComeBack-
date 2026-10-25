@@ -50,6 +50,32 @@ export function workoutMessage(setsToday: number): CoachMessage {
   return { text: `${setsToday} sets. Volume monster. Watch recovery.`, vibe: 'warn', emoji: '🔥' };
 }
 
+/**
+ * Shown the moment a user logs a relapse. Never cold-resets them to zero — it
+ * reframes the broken run as proof of capability and points at the record to
+ * rebuild toward. This is ComeBack's core emotional differentiator.
+ */
+export function relapseMessage(brokenStreak: number, previousBest: number): CoachMessage {
+  if (brokenStreak <= 0 && previousBest <= 0)
+    return {
+      text: 'Logged. No shame — just data. Day 0 → Day 1 starts now.',
+      vibe: 'ok',
+      emoji: '🌱',
+    };
+  if (brokenStreak >= previousBest && brokenStreak > 0)
+    return {
+      text: `${brokenStreak} clean days just ended — your longest yet. That streak proved you can. Start again today.`,
+      vibe: 'warn',
+      emoji: '🔁',
+    };
+  const record = Math.max(previousBest, brokenStreak);
+  return {
+    text: `Broke a ${brokenStreak}-day run. Your record's still ${record} — you've gone longer before. Reset, don't quit.`,
+    vibe: 'warn',
+    emoji: '💪',
+  };
+}
+
 export function streakMessage(days: number, kind: 'clean' | 'workout'): CoachMessage {
   if (days === 0)
     return {

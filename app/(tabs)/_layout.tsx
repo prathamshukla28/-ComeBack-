@@ -68,6 +68,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="trends"
+        options={{
+          title: 'Trends',
+          tabBarIcon: ({ color }) => <TabIcon name="chart.line.uptrend.xyaxis" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="intimacy"
         options={{
           title: 'Intimacy',

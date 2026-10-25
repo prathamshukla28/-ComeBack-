@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { computeStreakStats, localDay, type StreakStats } from './streaks';
 
 /* ---------- Habits (cigarette, alcohol, intimacy) ---------- */
 
@@ -12,6 +13,25 @@ export async function logHabit(kind: HabitKind, amount = 1, meta: Record<string,
     .single();
   if (error) throw error;
   return data;
+}
+
+/**
+ * Log a habit, but never lose the tap offline: a network failure persists the
+ * log to the outbox (replayed later) instead of throwing. Genuine server errors
+ * (RLS/auth) still throw so the caller can react.
+ */
+export async function logHabitResilient(kind: HabitKind, amount = 1): Promise<{ queued: boolean }> {
+  const occurred_at = new Date().toISOString();
+  try {
+    await logHabit(kind, amount, {});
+    return { queued: false };
+  } catch (e) {
+    const { enqueueHabit, isNetworkError } = await import('./outbox');
+    if (!isNetworkError(e)) throw e;
+    const id = `${occurred_at}-${Math.random().toString(36).slice(2, 10)}`;
+    await enqueueHabit({ id, kind, amount, occurred_at });
+    return { queued: true };
+  }
 }
 
 export async function habitCountToday(kind: HabitKind): Promise<number> {
@@ -42,6 +62,23 @@ export async function cleanStreak(kind: HabitKind): Promise<number> {
   const diffMs = today.getTime() - lastDay.getTime();
   const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   return Math.max(0, days);
+}
+
+/**
+ * Relapse-aware streak stats for a habit: current clean run, the personal best
+ * worth chasing, and the length of any run a relapse broke today. Powers the
+ * "you've done longer — rebuild" UX instead of a cold reset to zero.
+ */
+export async function cleanStreakStats(kind: HabitKind): Promise<StreakStats> {
+  const { data, error } = await supabase
+    .from('habit_logs')
+    .select('occurred_at')
+    .eq('kind', kind)
+    .order('occurred_at', { ascending: true })
+    .limit(2000);
+  if (error) throw error;
+  const days = (data ?? []).map((r: any) => localDay(new Date(r.occurred_at)));
+  return computeStreakStats(days, localDay(new Date()));
 }
 
 export async function workoutStreak(): Promise<number> {
@@ -105,6 +142,58 @@ export async function habitLast7Days(kind: HabitKind): Promise<{ date: string; t
   for (const r of data ?? []) {
     const key = (r as any).occurred_at.slice(0, 10);
     map.set(key, (map.get(key) ?? 0) + Number((r as any).amount || 0));
+  }
+  return Array.from(map, ([date, total]) => ({ date, total }));
+}
+
+/**
+ * Daily totals for a habit over the trailing `days` days (oldest first),
+ * zero-filled. Used by the Trends screen to split into week-over-week windows.
+ */
+export async function habitDailyTotals(
+  kind: HabitKind,
+  days = 14,
+): Promise<{ date: string; total: number }[]> {
+  const start = new Date();
+  start.setDate(start.getDate() - (days - 1));
+  start.setHours(0, 0, 0, 0);
+  const { data, error } = await supabase
+    .from('habit_logs')
+    .select('amount, occurred_at')
+    .eq('kind', kind)
+    .gte('occurred_at', start.toISOString());
+  if (error) throw error;
+  const map = new Map<string, number>();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    map.set(localDay(d), 0);
+  }
+  for (const r of data ?? []) {
+    const key = localDay(new Date((r as any).occurred_at));
+    if (map.has(key)) map.set(key, (map.get(key) ?? 0) + Number((r as any).amount || 0));
+  }
+  return Array.from(map, ([date, total]) => ({ date, total }));
+}
+
+/** Count of workout sessions per day over the trailing `days` days (oldest first). */
+export async function workoutDailyCounts(days = 14): Promise<{ date: string; total: number }[]> {
+  const start = new Date();
+  start.setDate(start.getDate() - (days - 1));
+  const { data, error } = await supabase
+    .from('workouts')
+    .select('performed_on')
+    .gte('performed_on', localDay(start));
+  if (error) throw error;
+  const map = new Map<string, number>();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    map.set(localDay(d), 0);
+  }
+  for (const r of data ?? []) {
+    const key = String((r as any).performed_on).slice(0, 10);
+    if (map.has(key)) map.set(key, (map.get(key) ?? 0) + 1);
   }
   return Array.from(map, ([date, total]) => ({ date, total }));
 }
