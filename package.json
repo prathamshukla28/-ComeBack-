@@ -64,7 +64,7 @@
   "devDependencies": {
     "@babel/plugin-transform-class-properties": "^8.0.1",
     "@babel/plugin-transform-private-methods": "^8.0.1",
-    "@babel/plugin-transform-private-property-in-object": "^8.0.1",
+    "@babel/plugin-transform-private-property-in-object": "^8.0.5",
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@testing-library/react-native": "^12.7.2",
