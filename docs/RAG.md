@@ -45,9 +45,16 @@ RAG service has a bug.
    (`Authorization: Bearer <user-jwt>`). So `auth.uid()` inside the RPC _is_ the end
    user. The service does **not** hold a privileged key on the request path — there's
    no capability to read across users to misuse.
-3. **Optional local JWT verification** (`SUPABASE_JWT_SECRET`) rejects forged/expired
-   tokens before a DB round-trip. Even without it, PostgREST verifies the signature at
-   the DB boundary, so a forged token fails there.
+3. **Every token is verified before anything is spent.** `require_user` runs ahead of
+   every Gemini call. With `SUPABASE_JWT_SECRET` set it is a local HS256 signature
+   check; without it the service asks Supabase Auth (`GET /auth/v1/user`), which also
+   covers projects on asymmetric signing keys. A bad token is a `401` that costs
+   nothing; an unreachable verifier is a `503`, never an assumed pass. PostgREST
+   verifies the signature again at the DB boundary.
+4. **Per-user throttle.** After verification, a sliding window
+   (`RAG_RATE_LIMIT_PER_MINUTE`, default 30) caps how fast one session can run up the
+   Gemini bill; over the limit is `429` with `Retry-After`. Unverified requests are
+   never counted against a real user.
 
 **Why not the usual "service-role key + `where user_id = ?`" pattern?** That makes
 isolation depend on every query remembering the filter — one missed `where` leaks
@@ -55,9 +62,10 @@ everything. Here the filter is a database invariant, not a coding convention. Th
 service-role key exists only for `ingest/exercise_kb.py`, which writes shared curated
 data and reads no user rows.
 
-**Test that pins it:** `tests/test_api.py::test_coach_forwards_user_jwt_to_supabase`
+**Tests that pin it:** `tests/test_api.py::test_coach_forwards_user_jwt_to_supabase`
 asserts the outbound memory-lookup request carries the user's bearer token, not the
-anon/service key.
+anon/service key; `tests/test_auth_gate.py` asserts a junk token never reaches Gemini;
+`tests/test_ratelimit.py` asserts a `429` spends nothing.
 
 ## Retrieval-quality choices
 

@@ -179,15 +179,36 @@ begin
   end loop;
 end $$;
 
--- Exercises: everyone can read presets; users manage their own custom ones
+-- Exercises: everyone can read presets; users manage ONLY their own custom ones.
+-- Presets (is_custom = false, owner_id null) are seed data: no client role may
+-- insert, update, or delete them. Each write policy therefore requires a row that
+-- is BOTH custom AND owned by the caller — a policy whose USING clause is true for
+-- presets would let any caller, even `anon` holding the public key, rewrite or
+-- delete the shared library. Writes are limited to `authenticated`; `anon` can read.
+-- SPEC-GAP: SPEC-GAP-018
 drop policy if exists exercises_select_all on public.exercises;
 create policy exercises_select_all on public.exercises
   for select using (true);
 
+-- Earlier deployments shipped one FOR ALL policy under this name whose USING
+-- clause was satisfied by presets. Dropping it here closes that hole on re-run.
 drop policy if exists exercises_write_own on public.exercises;
-create policy exercises_write_own on public.exercises
-  for all using (is_custom = false or owner_id = auth.uid())
-  with check (is_custom = false or owner_id = auth.uid());
+
+drop policy if exists exercises_insert_own on public.exercises;
+create policy exercises_insert_own on public.exercises
+  for insert to authenticated
+  with check (is_custom = true and owner_id = auth.uid());
+
+drop policy if exists exercises_update_own on public.exercises;
+create policy exercises_update_own on public.exercises
+  for update to authenticated
+  using (is_custom = true and owner_id = auth.uid())
+  with check (is_custom = true and owner_id = auth.uid());
+
+drop policy if exists exercises_delete_own on public.exercises;
+create policy exercises_delete_own on public.exercises
+  for delete to authenticated
+  using (is_custom = true and owner_id = auth.uid());
 
 ------------------------------------------------------------
 -- Seed: common exercises

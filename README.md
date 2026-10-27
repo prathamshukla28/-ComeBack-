@@ -148,10 +148,11 @@ Every push and PR runs through:
 - ✅ **TypeScript strict** — `tsc --noEmit` must be error-free
 - ✅ **ESLint** (`eslint-config-expo` + Prettier compatibility) — `--max-warnings=0`
 - ✅ **Prettier** formatting check
-- ✅ **Jest** — currently **100 tests** across `lib/` logic (`env`, `coach-messages`, `queries`, `purchases`, `streaks`, `safety`, `pin`, `outbox`, `insights`) and `components/` UI (`Button`, `EnvBanner`), with coverage uploaded to Codecov
+- ✅ **Jest** — currently **148 tests** across `lib/` logic (`env`, `coach-messages`, `queries`, `purchases`, `streaks`, `safety`, `pin`, `outbox`, `insights`, `sessionStorage`), `components/` UI (`Button`, `EnvBanner`), and the RLS policy shape in `db/*.sql` (`schema-policies`); a coverage threshold ratchets up, never down; coverage uploaded to Codecov
+- ✅ **pytest** — the `rag/` service (30 tests, all network mocked): token verification before any Gemini spend, per-user rate limiting, and the user-JWT isolation contract
 - ✅ **markdownlint-cli2** — docs quality
-- ✅ **CodeQL** security scanning (JavaScript/TypeScript, `security-and-quality` query set)
-- ✅ **Dependabot** — grouped weekly updates for npm and GitHub Actions
+- ✅ **CodeQL** security scanning (JavaScript/TypeScript **and** Python, `security-and-quality` query set)
+- ✅ **Dependabot** — grouped weekly updates for npm, pip (`rag/`), and GitHub Actions; actions are pinned to commit SHAs
 - ✅ **release-please** — automated CHANGELOG + version bumps from Conventional Commits
 - ✅ **Stale bot** — hygiene sweep for abandoned issues/PRs
 - ✅ **EAS Preview** (opt-in) — automated iOS/Android builds on PRs when `EXPO_TOKEN` is configured
