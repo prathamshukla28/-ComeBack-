@@ -27,7 +27,8 @@ from .schemas import (
     MemoryOut,
     RetrieveResponse,
 )
-from .security import UserToken, require_user
+from .ratelimit import rate_limited
+from .security import UserToken
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level)
@@ -48,7 +49,7 @@ async def health() -> dict:
 
 
 @app.post("/rag/coach", response_model=CoachResponse)
-async def coach(req: CoachRequest, user: UserToken = Depends(require_user)) -> CoachResponse:
+async def coach(req: CoachRequest, user: UserToken = Depends(rate_limited)) -> CoachResponse:
     async with httpx.AsyncClient(timeout=60) as client:
         ctx = await retrieval.retrieve(
             query=req.query,
@@ -74,7 +75,7 @@ async def coach(req: CoachRequest, user: UserToken = Depends(require_user)) -> C
 
 @app.post("/rag/retrieve", response_model=RetrieveResponse)
 async def retrieve_only(
-    req: CoachRequest, user: UserToken = Depends(require_user)
+    req: CoachRequest, user: UserToken = Depends(rate_limited)
 ) -> RetrieveResponse:
     """Transparency/debug endpoint: see exactly what would be fed to the model."""
     ctx = await retrieval.retrieve(
@@ -88,7 +89,7 @@ async def retrieve_only(
 
 
 @app.post("/rag/memories", response_model=MemoryOut)
-async def add_memory(mem: MemoryIn, user: UserToken = Depends(require_user)) -> MemoryOut:
+async def add_memory(mem: MemoryIn, user: UserToken = Depends(rate_limited)) -> MemoryOut:
     async with httpx.AsyncClient(timeout=30) as client:
         vec = await gemini.embed(mem.content, task_type="RETRIEVAL_DOCUMENT", client=client)
         new_id = await supabase.upsert_user_memory(

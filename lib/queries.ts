@@ -5,12 +5,15 @@ import { computeStreakStats, localDay, type StreakStats } from './streaks';
 
 export type HabitKind = 'cigarette' | 'alcohol' | 'intimacy';
 
-export async function logHabit(kind: HabitKind, amount = 1, meta: Record<string, any> = {}) {
-  const { error, data } = await supabase
-    .from('habit_logs')
-    .insert({ kind, amount, meta })
-    .select()
-    .single();
+export async function logHabit(
+  kind: HabitKind,
+  amount = 1,
+  meta: Record<string, any> = {},
+  id?: string,
+) {
+  const row: Record<string, unknown> = { kind, amount, meta };
+  if (id) row.id = id;
+  const { error, data } = await supabase.from('habit_logs').insert(row).select().single();
   if (error) throw error;
   return data;
 }
@@ -19,16 +22,20 @@ export async function logHabit(kind: HabitKind, amount = 1, meta: Record<string,
  * Log a habit, but never lose the tap offline: a network failure persists the
  * log to the outbox (replayed later) instead of throwing. Genuine server errors
  * (RLS/auth) still throw so the caller can react.
+ *
+ * The id is minted before the first attempt and used as the row's primary key
+ * on both the live insert and any replay, so a write that committed but whose
+ * response was lost cannot land twice.
  */
 export async function logHabitResilient(kind: HabitKind, amount = 1): Promise<{ queued: boolean }> {
   const occurred_at = new Date().toISOString();
+  const { enqueueHabit, isNetworkError, newHabitId } = await import('./outbox');
+  const id = newHabitId();
   try {
-    await logHabit(kind, amount, {});
+    await logHabit(kind, amount, {}, id);
     return { queued: false };
   } catch (e) {
-    const { enqueueHabit, isNetworkError } = await import('./outbox');
     if (!isNetworkError(e)) throw e;
-    const id = `${occurred_at}-${Math.random().toString(36).slice(2, 10)}`;
     await enqueueHabit({ id, kind, amount, occurred_at });
     return { queued: true };
   }

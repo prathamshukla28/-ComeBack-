@@ -37,10 +37,16 @@ class Settings(BaseSettings):
         "http://localhost:8081,http://localhost:19006", alias="CORS_ALLOW_ORIGINS"
     )
     log_level: str = Field("INFO", alias="LOG_LEVEL")
+    # Per-user ceiling on paid (Gemini-backed) requests; 0 disables. SPEC-GAP-016.
+    rate_limit_per_minute: int = Field(30, alias="RAG_RATE_LIMIT_PER_MINUTE")
 
     @property
     def rest_url(self) -> str:
         return f"{self.supabase_url.rstrip('/')}/rest/v1"
+
+    @property
+    def auth_url(self) -> str:
+        return f"{self.supabase_url.rstrip('/')}/auth/v1"
 
     @property
     def cors_origins(self) -> list[str]:

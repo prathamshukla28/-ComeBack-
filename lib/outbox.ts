@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 import { supabase } from './supabase';
 import type { HabitKind } from './queries';
 
@@ -11,6 +12,11 @@ import type { HabitKind } from './queries';
  * successful write) — the tap is never lost. Real server rejections (RLS, auth)
  * are NOT queued; those are genuine errors the caller should see.
  *
+ * Replay is idempotent: the client-generated id is also the row's primary key,
+ * so an insert whose response was lost in transit (committed server-side, but
+ * the device never heard back) replays into a unique-key violation — which is
+ * treated as "already landed" — instead of logging the habit twice.
+ *
  * The queue transforms are pure functions so ordering/dedup is unit-testable
  * without a device, AsyncStorage, or a network.
  */
@@ -22,6 +28,26 @@ export interface PendingHabit {
   kind: HabitKind;
   amount: number;
   occurred_at: string;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isUuid(s: string): boolean {
+  return UUID_RE.test(s);
+}
+
+/** A fresh id for a habit log — used both as the queue key and the row's primary key. */
+export function newHabitId(): string {
+  try {
+    return Crypto.randomUUID();
+  } catch {
+    // expo-crypto unavailable (should not happen on a built app): a Math.random v4
+    // is still unique enough to key an idempotent insert.
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+  }
 }
 
 /** A fetch/connectivity failure (queue it) vs. a server rejection (surface it). */
@@ -37,6 +63,11 @@ export function isNetworkError(e: unknown): boolean {
     msg.includes('econnrefused') ||
     msg.includes('enetunreach')
   );
+}
+
+/** Postgres `unique_violation`: this row already landed on an earlier attempt. */
+export function isDuplicateKey(e: unknown): boolean {
+  return (e as { code?: unknown } | null)?.code === '23505';
 }
 
 /* ---------- pure queue transforms ---------- */
@@ -62,6 +93,21 @@ export function parseQueue(raw: string | null): PendingHabit[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * The row an op inserts. Ops queued by builds before ids were UUIDs cannot be
+ * used as a primary key; those fall back to a server-generated id (the old,
+ * non-idempotent behaviour) rather than being rejected and dropped.
+ */
+export function toRow(op: PendingHabit): Record<string, unknown> {
+  const row: Record<string, unknown> = {
+    kind: op.kind,
+    amount: op.amount,
+    occurred_at: op.occurred_at,
+  };
+  if (isUuid(op.id)) row.id = op.id;
+  return row;
 }
 
 /* ---------- persistence ---------- */
@@ -93,10 +139,8 @@ export async function flushOutbox(): Promise<number> {
   let synced = 0;
   for (const op of queue) {
     try {
-      const { error } = await supabase
-        .from('habit_logs')
-        .insert({ kind: op.kind, amount: op.amount, occurred_at: op.occurred_at });
-      if (error) throw error;
+      const { error } = await supabase.from('habit_logs').insert(toRow(op));
+      if (error && !isDuplicateKey(error)) throw error;
       queue = removeOp(queue, op.id);
       synced++;
     } catch (e) {

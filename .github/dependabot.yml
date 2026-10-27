@@ -53,6 +53,24 @@ updates:
       - dependency-name: 'expo'
         update-types: ['version-update:semver-major']
 
+  - package-ecosystem: pip
+    directory: /rag
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Asia/Kolkata
+    labels:
+      - dependencies
+      - python
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      rag:
+        patterns:
+          - '*'
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

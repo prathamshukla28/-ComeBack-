@@ -87,12 +87,14 @@ curl -s localhost:8000/rag/coach \
 ## Tests
 
 ```bash
-pytest                 # 11 tests, all network (Gemini + Supabase) mocked via respx
+pytest                 # all network (Gemini + Supabase Auth + PostgREST) mocked via respx
 ```
 
 The suite covers the auth/isolation gate, the pgvector literal formatting, prompt
 assembly, the similarity-threshold filter, and — crucially — asserts that the
-**user's JWT** (not the anon/service key) is what reaches Postgres on a memory lookup.
+**user's JWT** (not the anon/service key) is what reaches Postgres on a memory lookup,
+that an unverified token never reaches Gemini, and that the per-user throttle returns
+`429` without spending. CI runs it on every push (`.github/workflows/ci.yml`, `rag` job).
 
 ## Layout
 
@@ -101,7 +103,8 @@ rag/
 ├── app/
 │   ├── main.py          # FastAPI routes
 │   ├── config.py        # env-driven settings
-│   ├── security.py      # JWT extraction / optional local verification
+│   ├── security.py      # JWT verification (local HS256 or Supabase Auth) before any spend
+│   ├── ratelimit.py     # per-user sliding-window throttle (429 + Retry-After)
 │   ├── gemini.py        # embeddings + generation (httpx)
 │   ├── supabase.py      # PostgREST RPC client that forwards the user JWT
 │   ├── retrieval.py     # embed → fan out to both stores → threshold filter
