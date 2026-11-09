@@ -12,13 +12,19 @@ import {
   logSet,
   todaySets,
   type Exercise,
+  type WorkoutSetRow,
 } from '@/lib/queries';
+import { localDay } from '@/lib/streaks';
 import { useTheme } from '@/lib/theme';
 
 export default function Workout() {
   const { c, brand } = useTheme();
   const qc = useQueryClient();
-  const workoutId = useQuery({ queryKey: ['todayWorkout'], queryFn: ensureTodayWorkout });
+  // Keyed by local day so a screen left open past midnight rolls over to a new workout.
+  const workoutId = useQuery({
+    queryKey: ['todayWorkout', localDay(new Date())],
+    queryFn: ensureTodayWorkout,
+  });
   const exercises = useQuery({ queryKey: ['exercises'], queryFn: listExercises });
   const sets = useQuery({
     queryKey: ['sets', workoutId.data],
@@ -39,7 +45,7 @@ export default function Workout() {
       const w = parseFloat(weight);
       const r = parseInt(reps, 10);
       if (isNaN(w) || isNaN(r)) throw new Error('Enter weight (kg) and reps');
-      await logSet({
+      const saved = await logSet({
         workoutId: workoutId.data,
         exerciseId: picked.id,
         exerciseName: picked.name,
@@ -47,7 +53,7 @@ export default function Workout() {
         reps: r,
         rir: rir ? parseInt(rir, 10) : undefined,
       });
-      const pr = await isNewPR(picked.name, w, r).catch(() => false);
+      const pr = await isNewPR(picked.name, w, r, saved.id).catch(() => false);
       return { pr, name: picked.name, w, r };
     },
     onSuccess: (result) => {
@@ -76,7 +82,7 @@ export default function Workout() {
   });
 
   const grouped = useMemo(() => {
-    const g: Record<string, any[]> = {};
+    const g: Record<string, WorkoutSetRow[]> = {};
     for (const s of sets.data ?? []) {
       g[s.exercise_name] ??= [];
       g[s.exercise_name].push(s);
@@ -140,7 +146,7 @@ export default function Workout() {
         Object.entries(grouped).map(([name, rows]) => (
           <Card key={name}>
             <H2>{name}</H2>
-            {rows.map((s: any) => (
+            {rows.map((s) => (
               <View key={s.id} style={styles.setRow}>
                 <P>
                   Set {s.set_index} · {s.weight_kg}kg × {s.reps}

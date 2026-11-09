@@ -7,6 +7,11 @@ export interface ChatTurn {
 }
 
 const MODEL = 'gemini-2.0-flash';
+
+/** The slice of a `generateContent` response we read. */
+interface GeminiResponse {
+  candidates?: { content?: { parts?: { text?: string }[] } }[];
+}
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 async function callGemini(
@@ -43,8 +48,8 @@ async function callGemini(
     throw new Error(`Gemini ${res.status}: ${errText.slice(0, 200)}`);
   }
 
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('') ?? '';
+  const data = (await res.json()) as GeminiResponse;
+  const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
   if (!text) throw new Error('Empty response from Gemini');
   return text.trim();
 }

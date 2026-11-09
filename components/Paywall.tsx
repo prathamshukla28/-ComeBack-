@@ -5,11 +5,11 @@ import { Button, Caption, Card, Eyebrow, H1, P, Screen } from '@/components/ui';
 import { useSubscription } from '@/lib/subscription';
 import { useTheme } from '@/lib/theme';
 
+// Only list what Pro actually unlocks today (see docs/MONETIZATION.md).
 const BENEFITS = [
-  'Unlimited AI Life Coach — it remembers you and grows with you',
-  'RAG-grounded Fitness Guru on your own history',
-  'Full stats history & progression charts',
-  'Unlimited habits and streaks',
+  'AI Life Coach — it remembers you and grows with you',
+  'Fitness Guru grounded in a curated exercise library and your own history',
+  'Supports an independent, privacy-first app — your data stays yours',
 ];
 
 function Benefit({ text }: { text: string }) {

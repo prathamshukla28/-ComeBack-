@@ -23,8 +23,6 @@ import { Platform } from 'react-native';
  *
  * Web has no SecureStore. There the session is stored as-is (localStorage), the
  * same guarantee every web app has: mobile-only guardrails degrade, never crash.
- *
- * SPEC-GAP: SPEC-GAP-017
  */
 
 const KEY_BYTES = 32;

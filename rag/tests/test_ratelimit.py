@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from app import ratelimit
 from app.main import app
 from app.ratelimit import SlidingWindowLimiter
-from tests.conftest import GL_BASE, REST, auth_user_route
+from tests.conftest import GL_BASE, REST, auth_user_route, entitlement_route
 
 client = TestClient(app)
 
@@ -87,9 +87,30 @@ def test_unverified_flood_is_not_counted_against_anyone(auth_header):
     auth_route.mock(
         return_value=httpx.Response(200, json={"id": "user-123", "aud": "authenticated"})
     )
+    entitlement_route()
     respx.post(url__regex=rf"{GL_BASE}/models/.*:embedContent").mock(
         return_value=httpx.Response(200, json={"embedding": {"values": [0.02] * 768}})
     )
     respx.post(f"{REST}/rpc/match_exercise_kb").mock(return_value=httpx.Response(200, json=[]))
     respx.post(f"{REST}/rpc/match_user_memories").mock(return_value=httpx.Response(200, json=[]))
     assert client.post("/rag/retrieve", json={"query": "x"}, headers=auth_header).status_code == 200
+
+
+@respx.mock
+def test_a_custom_backend_can_be_plugged_in(auth_header):
+    """The routes depend on the `Limiter` protocol, not the in-memory class, so a
+    shared backend (e.g. Redis) can be installed without touching them."""
+
+    class DenyAll:
+        def check(self, key: str, now: float | None = None) -> tuple[bool, float]:
+            return False, 7.0
+
+    ratelimit.set_limiter(DenyAll())
+    auth_user_route(ok=True, pro=None)
+
+    r = client.post("/rag/retrieve", json={"query": "x"}, headers=auth_header)
+
+    assert r.status_code == 429
+    assert r.headers["retry-after"] == "8"
+    ratelimit.set_limiter(None)
+    assert isinstance(ratelimit.get_limiter(), SlidingWindowLimiter)

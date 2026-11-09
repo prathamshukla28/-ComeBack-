@@ -12,8 +12,8 @@ receipts. Premium features are gated behind a single **`pro`** entitlement.
 | Fitness Guru (direct Gemini) | RAG-grounded Guru on your own history _(optional)_ |
 | Recent stats                 | Full history & progression _(optional)_            |
 
-The Coach tab is gated out of the box (`app/(tabs)/coach.tsx`). To gate any
-other screen, read the flag:
+The Coach tab is gated out of the box (`app/(tabs)/coach.tsx`), and the Guru tab
+uses the RAG service only for Pro users. To gate any other screen, read the flag:
 
 ```ts
 import { useIsPro } from '@/lib/subscription';
@@ -30,6 +30,56 @@ or render `<Paywall feature="…" />` in place of the locked UI.
 - `lib/subscription.tsx` — `SubscriptionProvider` + `useSubscription()` /
   `useIsPro()`. Mounted in `app/_layout.tsx`.
 - `components/Paywall.tsx` + `app/paywall.tsx` — the paywall UI and its modal route.
+- `lib/demo.ts` — dev-only demo-Pro switch (see below).
+
+## Where Pro is enforced
+
+The client-side flag decides what the UI shows. It cannot protect anything that
+costs the operator money, because a modified client can flip it. So:
+
+| Feature                         | Runs on                       | Enforced by                                 |
+| ------------------------------- | ----------------------------- | ------------------------------------------- |
+| Life Coach (direct Gemini)      | the user's **own** Gemini key | client paywall (nothing of yours is spent)  |
+| RAG-grounded answers (`/rag/*`) | the **operator's** Gemini key | **server**: `rag/app/entitlements.py` → 403 |
+
+Server-side enforcement uses `public.user_entitlements` (`db/entitlements.sql`):
+
+- Clients may only **read** their own row (RLS). No insert/update/delete policy
+  exists and those privileges are revoked, so nobody can self-grant Pro with the
+  public anon key.
+- The RAG service calls `has_entitlement('pro')` **with the user's JWT**, so RLS
+  scopes the check to that user. No Pro → `403` before any Gemini call.
+- The table is written only by the **RevenueCat webhook**
+  (`POST /webhooks/revenuecat` in `rag/`), which calls the service-role-only
+  `apply_entitlement_event()` and ignores out-of-order deliveries.
+
+### Webhook setup
+
+1. Run `db/entitlements.sql` in the Supabase SQL editor (after `db/schema.sql`).
+2. In `rag/.env` set `REVENUECAT_WEBHOOK_SECRET` (a long random string) and
+   `SUPABASE_SERVICE_ROLE_KEY`. Without the secret the endpoint returns 404.
+3. RevenueCat → Project settings → Integrations → **Webhooks**: URL
+   `https://<your-rag-host>/webhooks/revenuecat`, Authorization header = the secret.
+4. Send a test event from the dashboard; the service answers `{"ok": true, "applied": 0}`.
+
+The app sets the RevenueCat app user id to the Supabase user id
+(`configurePurchases(userId)`), which is how webhook events map to `auth.users`.
+
+For a reviewer or demo account you can grant Pro by hand from the SQL editor (see
+the comment at the top of `db/entitlements.sql`).
+
+## Demo mode (dev builds only)
+
+To show the Coach without a sandbox purchase:
+
+```bash
+EXPO_PUBLIC_DEMO_PRO=1 npx expo start
+```
+
+The Coach tab then shows an amber **DEMO PRO** banner. The switch is inert in
+production builds: it requires `__DEV__`, refuses when `NODE_ENV` is
+`production`, and only ever changes the client flag. The RAG service still sees
+a non-Pro user, so the Guru tab falls back to the direct Gemini path.
 
 ## Setup (one time)
 

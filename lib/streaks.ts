@@ -42,12 +42,52 @@ function toEpochDay(day: string): number {
   return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
 }
 
-/** Local calendar day (`YYYY-MM-DD`) for a Date — matches how the app perceives "today". */
+/** Inverse of {@link toEpochDay}. */
+function fromEpochDay(epoch: number): string {
+  return new Date(epoch * 86_400_000).toISOString().slice(0, 10);
+}
+
+/**
+ * Local calendar day (`YYYY-MM-DD`) for a Date — matches how the app perceives "today".
+ *
+ * This is THE day convention for the whole app: every bucket key, every streak, and
+ * every `performed_on` value written to Postgres goes through here. Never derive a
+ * day from `toISOString()` — that is the UTC day, which is "yesterday" for a user in
+ * India before 05:30 and "tomorrow" for a user in California after 16:00/17:00.
+ */
 export function localDay(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/** Midnight at the start of `date`'s local calendar day (a new Date; input untouched). */
+export function startOfLocalDay(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** `day` shifted by `n` calendar days. Pure string math, so DST can never skew it. */
+export function shiftDay(day: string, n: number): string {
+  return fromEpochDay(toEpochDay(day) + n);
+}
+
+/** The `count` calendar days ending at `today`, oldest first. */
+export function trailingDays(count: number, today: string): string[] {
+  return Array.from({ length: Math.max(0, count) }, (_, i) => shiftDay(today, i - (count - 1)));
+}
+
+/**
+ * Length of the unbroken run of `days` ending exactly at `today` (0 if `today`
+ * itself is absent). Duplicates and ordering don't matter.
+ */
+export function consecutiveRunEndingAt(days: Iterable<string>, today: string): number {
+  const set = new Set(days);
+  let run = 0;
+  while (set.has(shiftDay(today, -run))) run++;
+  return run;
 }
 
 /**

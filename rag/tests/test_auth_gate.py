@@ -12,7 +12,7 @@ import respx
 from fastapi.testclient import TestClient
 
 from app.main import app
-from tests.conftest import AUTH, GL_BASE, REST, auth_user_route
+from tests.conftest import AUTH, GL_BASE, REST, auth_user_route, entitlement_route
 
 client = TestClient(app)
 
@@ -93,6 +93,7 @@ def test_verified_caller_proceeds_to_retrieval(auth_header):
 def test_local_secret_path_never_calls_supabase_auth(local_jwt_secret, auth_header):
     # With a local secret the verifier is PyJWT; the auth endpoint is not mocked, so
     # respx would raise on any attempt to call it.
+    entitlement_route()
     _embed_route()
     respx.post(f"{REST}/rpc/match_exercise_kb").mock(return_value=httpx.Response(200, json=[]))
     respx.post(f"{REST}/rpc/match_user_memories").mock(return_value=httpx.Response(200, json=[]))

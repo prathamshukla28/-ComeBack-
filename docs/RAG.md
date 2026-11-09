@@ -89,6 +89,13 @@ distance` is thresholded (`RAG_MIN_SIMILARITY`) so weak matches don't pad the pr
 - Free-tier Gemini is rate-limited (~15 req/min); each `/rag/coach` call makes one
   embed + one generate request.
 - `ivfflat` lists are tuned for a small KB; switch to `hnsw` if the KB grows large.
+- Every `/rag/*` route is a Pro feature checked server-side (`rag/app/entitlements.py`,
+  `db/entitlements.sql`); the entitlement lookup also runs under the user's JWT.
+- The per-user rate limit is in-process (per worker); see `rag/README.md` →
+  "Rate limiting" before running multiple workers or replicas.
+- In the app, RAG grounding is used by the **Fitness Guru** tab. The **Life Coach**
+  tab uses the direct Gemini path with its own long-term memory (`coach_memory`,
+  validated and quoted as data — see `lib/coach-memory.ts`).
 
 ## Extending it
 

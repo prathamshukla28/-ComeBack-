@@ -2,18 +2,25 @@
 
 Every authenticated request costs real money (a Gemini embedding, usually a
 generation too, on the service's key), so one session must not be able to run the
-bill up or starve everyone else. This is a sliding window per subject kept in
-process memory: dependency-free and honest about its scope — with several uvicorn
-workers each keeps its own counts, so the effective ceiling is `limit x workers`. A
-shared store (Redis) is the upgrade path if the service is ever scaled out.
+bill up or starve everyone else.
 
-SPEC-GAP: SPEC-GAP-016
+SCOPE — read before scaling out. The default backend is a sliding window per
+subject kept in PROCESS MEMORY. It is dependency-free and exact for a single
+worker, but:
+  * with N uvicorn/gunicorn workers each keeps its own counts, so the effective
+    ceiling is `limit x N`;
+  * with several replicas (containers, autoscaling) it is per replica;
+  * counts reset on restart/deploy.
+Run one worker per replica, or plug in a shared backend: anything implementing the
+`Limiter` protocol below (e.g. a Redis sorted-set or `INCR`+`EXPIRE` window) can be
+installed at startup with `set_limiter(...)` without touching the routes.
 """
 
 from __future__ import annotations
 
 import time
 from collections import deque
+from typing import Protocol
 
 from fastapi import Depends, HTTPException
 
@@ -22,6 +29,13 @@ from .security import UserToken, require_user
 
 # Above this many tracked subjects, expired windows are swept so memory stays bounded.
 _PRUNE_AT = 10_000
+
+
+class Limiter(Protocol):
+    """A rate-limit backend. `check` records one hit for `key` and returns
+    (allowed, seconds until the caller may retry)."""
+
+    def check(self, key: str, now: float | None = None) -> tuple[bool, float]: ...
 
 
 class SlidingWindowLimiter:
@@ -63,14 +77,21 @@ class SlidingWindowLimiter:
         self._hits.clear()
 
 
-_limiter: SlidingWindowLimiter | None = None
+_limiter: Limiter | None = None
 
 
-def get_limiter() -> SlidingWindowLimiter:
+def get_limiter() -> Limiter:
+    """The installed backend; defaults to the in-process sliding window."""
     global _limiter
     if _limiter is None:
         _limiter = SlidingWindowLimiter(get_settings().rate_limit_per_minute, 60.0)
     return _limiter
+
+
+def set_limiter(limiter: Limiter | None) -> None:
+    """Install a backend (e.g. a shared Redis limiter at startup). None = default."""
+    global _limiter
+    _limiter = limiter
 
 
 async def rate_limited(user: UserToken = Depends(require_user)) -> UserToken:

@@ -29,10 +29,22 @@ REST = "https://test.supabase.co/rest/v1"
 AUTH = "https://test.supabase.co/auth/v1"
 
 
-def auth_user_route(ok: bool = True, sub: str = "user-123"):
+def entitlement_route(pro: bool = True):
+    """Mock the server-side Pro check (`rpc/has_entitlement`, run under the user's JWT)."""
+    return respx.post(f"{REST}/rpc/has_entitlement").mock(
+        return_value=httpx.Response(200, json=pro)
+    )
+
+
+def auth_user_route(ok: bool = True, sub: str = "user-123", pro: bool | None = True):
     """Mock Supabase Auth's session check (`GET /auth/v1/user`), the remote verifier
-    require_user uses when no local JWT secret is configured."""
+    require_user uses when no local JWT secret is configured.
+
+    A verified caller is Pro by default (the paid routes need it); pass `pro=False`
+    for a free user, or `pro=None` to leave the entitlement check unmocked."""
     if ok:
+        if pro is not None:
+            entitlement_route(pro)
         body = {"id": sub, "aud": "authenticated", "role": "authenticated"}
         return respx.get(f"{AUTH}/user").mock(return_value=httpx.Response(200, json=body))
     return respx.get(f"{AUTH}/user").mock(

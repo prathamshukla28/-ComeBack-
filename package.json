@@ -30,6 +30,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:rls": "jest db/__tests__/rls.integration.test.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -61,8 +62,7 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
-    "zod": "^3.23.8",
-    "zustand": "^5.0.0"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@babel/plugin-transform-class-properties": "^8.0.1",

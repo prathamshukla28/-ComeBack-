@@ -17,6 +17,7 @@ import {
   todaySets,
   workoutStreak,
 } from '@/lib/queries';
+import { localDay } from '@/lib/streaks';
 import { useTheme } from '@/lib/theme';
 
 function vibeColor(v: Vibe, theme: any) {
@@ -67,7 +68,10 @@ export default function Dashboard() {
     queryKey: ['habit', 'intimacy', 'today'],
     queryFn: () => habitCountToday('intimacy'),
   });
-  const workoutId = useQuery({ queryKey: ['todayWorkout'], queryFn: ensureTodayWorkout });
+  const workoutId = useQuery({
+    queryKey: ['todayWorkout', localDay(new Date())],
+    queryFn: ensureTodayWorkout,
+  });
   const sets = useQuery({
     queryKey: ['sets', workoutId.data],
     queryFn: () => todaySets(workoutId.data!),

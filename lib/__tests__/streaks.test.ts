@@ -1,4 +1,11 @@
-import { computeStreakStats, localDay } from '../streaks';
+import {
+  computeStreakStats,
+  consecutiveRunEndingAt,
+  localDay,
+  shiftDay,
+  startOfLocalDay,
+  trailingDays,
+} from '../streaks';
 
 const addDays = (base: string, n: number): string => {
   const [y, m, d] = base.split('-').map(Number);
@@ -80,5 +87,36 @@ describe('localDay', () => {
   it('formats a date as zero-padded YYYY-MM-DD in local time', () => {
     expect(localDay(new Date(2026, 0, 5))).toBe('2026-01-05');
     expect(localDay(new Date(2026, 11, 31))).toBe('2026-12-31');
+  });
+});
+
+describe('day arithmetic (timezone-free string math)', () => {
+  it('shiftDay crosses month, year and leap-day boundaries', () => {
+    expect(shiftDay('2026-03-01', -1)).toBe('2026-02-28');
+    expect(shiftDay('2028-03-01', -1)).toBe('2028-02-29');
+    expect(shiftDay('2026-12-31', 1)).toBe('2027-01-01');
+    expect(shiftDay('2026-11-01', 0)).toBe('2026-11-01');
+  });
+
+  it('trailingDays lists `count` days ending today, oldest first', () => {
+    expect(trailingDays(3, '2026-01-01')).toEqual(['2025-12-30', '2025-12-31', '2026-01-01']);
+    expect(trailingDays(1, TODAY)).toEqual([TODAY]);
+    expect(trailingDays(0, TODAY)).toEqual([]);
+  });
+
+  it('consecutiveRunEndingAt counts back from today and stops at the first gap', () => {
+    const days = [TODAY, addDays(TODAY, -1), addDays(TODAY, -2), addDays(TODAY, -4)];
+    expect(consecutiveRunEndingAt(days, TODAY)).toBe(3);
+    expect(consecutiveRunEndingAt([addDays(TODAY, -1)], TODAY)).toBe(0);
+    expect(consecutiveRunEndingAt([], TODAY)).toBe(0);
+    expect(consecutiveRunEndingAt([TODAY, TODAY], TODAY)).toBe(1);
+  });
+
+  it('startOfLocalDay returns local midnight without mutating its input', () => {
+    const input = new Date(2026, 4, 6, 15, 45, 12, 9);
+    const start = startOfLocalDay(input);
+    expect([start.getHours(), start.getMinutes(), start.getSeconds()]).toEqual([0, 0, 0]);
+    expect(localDay(start)).toBe('2026-05-06');
+    expect(input.getHours()).toBe(15);
   });
 });

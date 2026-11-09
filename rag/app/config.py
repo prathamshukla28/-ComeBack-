@@ -37,8 +37,15 @@ class Settings(BaseSettings):
         "http://localhost:8081,http://localhost:19006", alias="CORS_ALLOW_ORIGINS"
     )
     log_level: str = Field("INFO", alias="LOG_LEVEL")
-    # Per-user ceiling on paid (Gemini-backed) requests; 0 disables. SPEC-GAP-016.
+    # Per-user ceiling on paid (Gemini-backed) requests; 0 disables. In-process,
+    # per worker — see app/ratelimit.py for the scaling caveat.
     rate_limit_per_minute: int = Field(30, alias="RAG_RATE_LIMIT_PER_MINUTE")
+
+    # Billing. Paid endpoints require this entitlement (db/entitlements.sql).
+    pro_entitlement: str = Field("pro", alias="PRO_ENTITLEMENT")
+    # Shared secret RevenueCat sends in the Authorization header of its webhook.
+    # Blank = the webhook endpoint is disabled (404).
+    revenuecat_webhook_secret: str = Field("", alias="REVENUECAT_WEBHOOK_SECRET")
 
     @property
     def rest_url(self) -> str:

@@ -6,9 +6,13 @@
  * via {@link useSubscription}. Everything degrades gracefully when billing is
  * unavailable (web, Expo Go, tests, or no RevenueCat key) — `isPro` is simply
  * `false` and `billingAvailable` is `false`.
+ *
+ * In a dev build started with `EXPO_PUBLIC_DEMO_PRO=1`, `isPro` is forced on and
+ * `demoMode` is true (see ./demo — inert in production builds).
  */
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from './auth';
+import { demoProEnabled } from './demo';
 import {
   configurePurchases,
   getProPackages,
@@ -20,8 +24,10 @@ import {
 } from './purchases';
 
 interface SubscriptionContextValue {
-  /** True when the signed-in user has an active Pro entitlement. */
+  /** True when the signed-in user has an active Pro entitlement (or dev demo mode). */
   isPro: boolean;
+  /** True when Pro is forced on by the dev-only demo flag, not a real entitlement. */
+  demoMode: boolean;
   /** Still determining entitlement on first load. */
   loading: boolean;
   /** Whether real billing can run here (native SDK + configured key). */
@@ -44,6 +50,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [packages, setPackages] = useState<any[]>([]);
   const billingAvailable = purchasesAvailable();
+  const demoMode = demoProEnabled();
 
   useEffect(() => {
     let active = true;
@@ -74,7 +81,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<SubscriptionContextValue>(
     () => ({
-      isPro,
+      isPro: isPro || demoMode,
+      demoMode,
       loading,
       billingAvailable,
       packages,
@@ -89,7 +97,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         return nowPro;
       },
     }),
-    [isPro, loading, billingAvailable, packages],
+    [isPro, demoMode, loading, billingAvailable, packages],
   );
 
   return <SubscriptionCtx.Provider value={value}>{children}</SubscriptionCtx.Provider>;

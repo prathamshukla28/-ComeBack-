@@ -10,6 +10,7 @@ import { join } from 'path';
 const DB = join(__dirname, '..', '..', 'db');
 const schema = readFileSync(join(DB, 'schema.sql'), 'utf8');
 const rag = readFileSync(join(DB, 'rag.sql'), 'utf8');
+const ent = readFileSync(join(DB, 'entitlements.sql'), 'utf8');
 
 const policies = (sql: string): string[] => sql.match(/create policy[\s\S]*?;/gi) ?? [];
 const tablesOf = (sql: string): string[] =>
@@ -55,8 +56,8 @@ describe('db/schema.sql — exercises (shared preset library)', () => {
 });
 
 describe('every table that stores user rows is RLS-protected', () => {
-  const owned = [...tablesOf(schema), ...tablesOf(rag)].filter((t) =>
-    /\bowner_id\b/.test(columnsOf(schema, t) || columnsOf(rag, t)),
+  const owned = [...tablesOf(schema), ...tablesOf(rag), ...tablesOf(ent)].filter((t) =>
+    /\bowner_id\b/.test(columnsOf(schema, t) || columnsOf(rag, t) || columnsOf(ent, t)),
   );
 
   it('finds the owned tables', () => {
@@ -67,13 +68,14 @@ describe('every table that stores user rows is RLS-protected', () => {
         'habit_logs',
         'chat_messages',
         'user_memories',
+        'user_entitlements',
       ]),
     );
   });
 
   it.each(owned)('%s has row level security enabled', (table) => {
     const re = new RegExp(`alter table public\\.${table}\\s+enable row level security`, 'i');
-    expect(re.test(schema) || re.test(rag)).toBe(true);
+    expect(re.test(schema) || re.test(rag) || re.test(ent)).toBe(true);
   });
 
   it.each(owned.filter((t) => t !== 'exercises'))(
@@ -83,7 +85,7 @@ describe('every table that stores user rows is RLS-protected', () => {
       // user_memories out. Either way the owner-only predicate must be present.
       const inLoop =
         new RegExp(`'${table}'`).test(schema) && /owner_id = auth\.uid\(\)/.test(schema);
-      const explicit = policies(rag).some(
+      const explicit = [...policies(rag), ...policies(ent)].some(
         (p) => new RegExp(`on public\\.${table}`).test(p) && /owner_id = auth\.uid\(\)/.test(p),
       );
       expect(inLoop || explicit).toBe(true);
@@ -101,5 +103,68 @@ describe('db/rag.sql — curated knowledge base is read-only for clients', () =>
   it('retrieval functions run as the caller (security invoker), never as definer', () => {
     expect(rag).not.toMatch(/security definer/i);
     expect((rag.match(/security invoker/gi) ?? []).length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('db/entitlements.sql — users can read, never grant, their own Pro', () => {
+  const entPolicies = policies(ent).filter((p) => /on public\.user_entitlements/i.test(p));
+
+  it('has exactly one policy on user_entitlements, a SELECT scoped to the owner', () => {
+    expect(entPolicies).toHaveLength(1);
+    expect(entPolicies[0]).toMatch(/for select/i);
+    expect(entPolicies[0]).toMatch(/to authenticated/i);
+    expect(entPolicies[0]).toMatch(/using \(owner_id = auth\.uid\(\)\)/i);
+    expect(entPolicies[0]).not.toMatch(/for (all|insert|update|delete)/i);
+  });
+
+  it('revokes write privileges from the client roles', () => {
+    expect(ent).toMatch(
+      /revoke insert, update, delete, truncate on public\.user_entitlements from anon, authenticated/i,
+    );
+  });
+
+  it('has no owner_id trigger (the webhook always sets owner_id explicitly)', () => {
+    expect(ent).not.toMatch(/set_owner_id/i);
+  });
+
+  it('never uses SECURITY DEFINER', () => {
+    expect(ent).not.toMatch(/security definer/i);
+    expect((ent.match(/^security invoker$/gim) ?? []).length).toBe(2);
+  });
+
+  it('has_entitlement is callable by authenticated users and checks expiry', () => {
+    expect(ent).toMatch(
+      /grant execute on function public\.has_entitlement\(text\) to authenticated/i,
+    );
+    expect(ent).toMatch(/expires_at is null or e\.expires_at > now\(\)/i);
+  });
+
+  it('apply_entitlement_event is executable by service_role only', () => {
+    const grants =
+      ent.match(/grant execute on function public\.apply_entitlement_event[\s\S]*?;/gi) ?? [];
+    expect(grants).toHaveLength(1);
+    expect(grants[0]).toMatch(/to service_role;/i);
+    expect(ent).toMatch(
+      /revoke all on function public\.apply_entitlement_event[\s\S]*?from public, anon, authenticated;/i,
+    );
+  });
+
+  it('ignores out-of-order webhook deliveries', () => {
+    expect(ent).toMatch(/where e\.last_event_ms <= excluded\.last_event_ms/i);
+  });
+});
+
+describe('db/schema.sql — set numbering integrity', () => {
+  it('enforces one row per (workout, exercise, set_index)', () => {
+    expect(schema).toMatch(
+      /create unique index if not exists \w+\s+on public\.workout_sets \(workout_id, exercise_name, set_index\)/i,
+    );
+  });
+
+  it('renumbers legacy duplicates before creating the index', () => {
+    expect(schema.indexOf('update public.workout_sets s')).toBeGreaterThan(-1);
+    expect(schema.indexOf('update public.workout_sets s')).toBeLessThan(
+      schema.indexOf('create unique index if not exists workout_sets_workout_exercise_set_uniq'),
+    );
   });
 });

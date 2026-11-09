@@ -31,7 +31,9 @@ A privacy-first habit and workout tracker with an AI coach — built with Expo, 
 - 📈 **Trends** — week-over-week deltas and sparklines for habits and workouts, colour-coded toward your goal
 - 📡 **Offline-safe logging** — a tap on a flaky connection is persisted to a durable outbox and replayed on reconnect; logs are never lost
 - 🛟 **Coach safety net** — self-harm signals short-circuit the LLM and surface vetted crisis resources (988 / Samaritans / findahelpline) instead
-- 🧠 **AI Coach** — conversational check-ins powered by Google Gemini, with optional RAG grounding (curated exercise KB + your own history via pgvector)
+- 🧠 **Two AI chats** — a **Fitness Guru** (optionally RAG-grounded in a curated exercise KB + your own history via pgvector) and a Pro **Life Coach** with long-term memory, both on Google Gemini
+- 🧷 **Injection-resistant coach memory** — facts the model extracts are schema-validated, instruction-shaped content is dropped, and memories re-enter prompts only as quoted, delimited data
+- 💳 **ComeBack Pro** — RevenueCat paywall on the client, **enforced server-side** for anything that spends the operator's API key (RLS-protected entitlements fed by a RevenueCat webhook)
 - 🔒 **Biometric lock** — Face ID / Touch ID gate for sensitive tabs, with a salted-hashed, rate-limited PIN fallback
 - 🔔 **Local notifications** — gentle nudges when your streaks are on the line
 - 🎨 **Adaptive theming** — polished light and dark palettes
@@ -40,25 +42,42 @@ A privacy-first habit and workout tracker with an AI coach — built with Expo, 
 
 ## 📱 Screenshots
 
-> Screenshots and demo GIF coming soon. See [`docs/screenshots/`](./docs/screenshots).
+<!-- Capture these on a device/simulator and save them under docs/screenshots/, then
+     replace each "to capture" cell with ![Today](docs/screenshots/today.png) etc. -->
 
-| Today | Workout | Habits | Coach |
-| :---: | :-----: | :----: | :---: |
-| _tbd_ |  _tbd_  | _tbd_  | _tbd_ |
+|    Today     |   Workout    |    Habits    |    Coach     |
+| :----------: | :----------: | :----------: | :----------: |
+| _to capture_ | _to capture_ | _to capture_ | _to capture_ |
+
+## ▶️ Run the demo
+
+1. Follow **Quick Start** below (Supabase project + `db/schema.sql`, `.env`).
+2. Sign in, open **Settings**, and paste your own [Gemini API key](https://aistudio.google.com/app/apikey) (stored in the OS keychain, never in the bundle).
+3. Log a few sets and habit taps — the Today, Habits and Trends screens fill in, and logging keeps working offline.
+4. **Life Coach (Pro)** — in a dev build, unlock it without a purchase:
+
+   ```bash
+   EXPO_PUBLIC_DEMO_PRO=1 npx expo start
+   ```
+
+   The Coach tab shows an amber **DEMO PRO** banner. This flag only affects development builds: it requires `__DEV__`, refuses when `NODE_ENV` is `production`, and never grants server-side Pro (see [`lib/demo.ts`](./lib/demo.ts), [`docs/MONETIZATION.md`](./docs/MONETIZATION.md#demo-mode-dev-builds-only)).
+
+5. **RAG-grounded Guru (optional)** — run the service in [`rag/`](./rag/README.md), set `EXPO_PUBLIC_RAG_URL`, and grant your test user Pro from the SQL editor (snippet in [`db/entitlements.sql`](./db/entitlements.sql)).
 
 ## 🧱 Tech Stack
 
-| Layer         | Choice                                                                                     |
-| ------------- | ------------------------------------------------------------------------------------------ |
-| **Runtime**   | Expo SDK 54, React Native 0.81, React 19                                                   |
-| **Language**  | TypeScript 5.9 (strict)                                                                    |
-| **Routing**   | [expo-router](https://docs.expo.dev/router/introduction/) (file-based)                     |
-| **State**     | [Zustand](https://github.com/pmndrs/zustand), [TanStack Query](https://tanstack.com/query) |
-| **Data**      | [Supabase](https://supabase.com/) (Postgres, Auth, RLS)                                    |
-| **AI**        | Google Gemini (`lib/gemini.ts`); optional RAG service in `rag/`                            |
-| **Animation** | `react-native-reanimated` v4 + Worklets                                                    |
-| **Storage**   | `expo-secure-store`, `@react-native-async-storage/async-storage`                           |
-| **Quality**   | ESLint, Prettier, Husky, lint-staged, commitlint, Jest, GitHub Actions, CodeQL, Dependabot |
+| Layer         | Choice                                                                                           |
+| ------------- | ------------------------------------------------------------------------------------------------ |
+| **Runtime**   | Expo SDK 54, React Native 0.81, React 19                                                         |
+| **Language**  | TypeScript 5.9 (strict)                                                                          |
+| **Routing**   | [expo-router](https://docs.expo.dev/router/introduction/) (file-based)                           |
+| **State**     | [TanStack Query](https://tanstack.com/query) (server state) + React context (auth, subscription) |
+| **Data**      | [Supabase](https://supabase.com/) (Postgres, Auth, RLS)                                          |
+| **AI**        | Google Gemini (`lib/gemini.ts`); optional FastAPI + pgvector RAG service in `rag/`               |
+| **Billing**   | RevenueCat (client) + webhook-fed, RLS-protected entitlements (server)                           |
+| **Animation** | `react-native-reanimated` v4 + Worklets                                                          |
+| **Storage**   | `expo-secure-store`, `@react-native-async-storage/async-storage`                                 |
+| **Quality**   | ESLint, Prettier, Husky, lint-staged, commitlint, Jest, GitHub Actions, CodeQL, Dependabot       |
 
 ## 🚀 Quick Start
 
@@ -92,54 +111,53 @@ Full walk-through with Supabase provisioning and schema import lives in [`docs/S
 ├── app/                    # expo-router file-based routes
 │   ├── (tabs)/             # Bottom-tab navigator
 │   │   ├── index.tsx       # Today dashboard
-│   │   ├── workout.tsx     # Workout logger
-│   │   ├── habits.tsx      # Habit journal
+│   │   ├── workout.tsx     # Workout logger (PR detection)
+│   │   ├── habits.tsx      # Habit journal + relapse-aware streaks
+│   │   ├── trends.tsx      # Week-over-week trends
 │   │   ├── intimacy.tsx    # Private tab (biometric-gated)
-│   │   ├── guru.tsx        # Guided routines
-│   │   ├── coach.tsx       # AI chat
-│   │   └── settings.tsx    # Preferences
-│   ├── _layout.tsx         # Root providers, theme, error boundary
-│   ├── login.tsx           # Supabase auth screen
-│   └── modal.tsx           # Reusable modal route
-├── components/             # Reusable UI primitives + widgets
-│   ├── ui.tsx              # Screen, Card, H1/H2, P, Button, StatRow, ...
-│   ├── Chat.tsx            # AI coach chat surface
-│   ├── AnimatedNumber.tsx  # Reanimated count-up
-│   └── Confetti.tsx        # Win animation
-├── lib/                    # Non-UI logic
-│   ├── supabase.ts         # Supabase client
-│   ├── auth.tsx            # Auth context + hooks
-│   ├── queries.ts          # TanStack Query fns
-│   ├── gemini.ts           # AI coach client
-│   ├── theme.ts            # Theme hook + palettes
-│   ├── haptics.ts          # Haptic helpers
-│   ├── notifications.ts    # Local notification schedulers
-│   ├── secureStore.ts      # expo-secure-store helpers
+│   │   ├── guru.tsx        # Fitness Guru chat (RAG-grounded for Pro when the service is set)
+│   │   ├── coach.tsx       # Life Coach chat (Pro)
+│   │   └── settings.tsx    # Profile, Gemini key, PIN, subscription
+│   ├── _layout.tsx         # Root providers, theme, outbox replay
+│   ├── paywall.tsx         # Modal paywall route
+│   └── login.tsx           # Supabase auth screen
+├── components/             # UI primitives (ui.tsx), Chat, Paywall, Confetti, ...
+├── lib/                    # Non-UI logic (unit-tested)
+│   ├── queries.ts          # Typed Supabase data access (local-day convention)
+│   ├── streaks.ts          # Pure streak + local-day math
+│   ├── coach-memory.ts     # Memory validation + quoting (prompt-injection defence)
+│   ├── coach-prompt.ts     # Life Coach prompt assembly + memory extraction
+│   ├── outbox.ts           # Durable offline queue for habit taps
+│   ├── safety.ts           # Crisis detection + safety preamble
+│   ├── purchases.ts        # RevenueCat wrapper
+│   ├── subscription.tsx    # Pro state context (+ dev-only demo mode, demo.ts)
+│   ├── rag.ts / gemini.ts  # AI clients
+│   ├── pin.ts, sessionStorage.ts, secureStore.ts  # on-device secrets
 │   └── env.ts              # zod-validated env
-├── constants/              # Design tokens (colors)
-├── db/                     # SQL schema for Supabase (schema.sql + rag.sql / pgvector)
-├── rag/                    # Python FastAPI RAG service (embeddings + pgvector + Gemini)
-├── docs/                   # Extended documentation (incl. RAG.md)
-├── .github/                # Workflows, templates, dependabot
-└── assets/                 # Fonts, icons, images
+├── db/                     # schema.sql, rag.sql (pgvector), entitlements.sql (+ RLS integration test)
+├── rag/                    # Python FastAPI RAG service (auth → rate limit → Pro → Gemini)
+├── test-utils/             # Supabase query-builder mock, time-zone-pinning Jest env
+├── docs/                   # SETUP, RAG, MONETIZATION
+└── .github/                # CI, CodeQL, Dependabot, release-please, EAS preview
 ```
 
 ## 🛠️ Scripts
 
-| Script                  | Purpose                        |
-| ----------------------- | ------------------------------ |
-| `npm start`             | Start Metro / Expo dev server  |
-| `npm run ios`           | Launch on iOS Simulator        |
-| `npm run android`       | Launch on Android emulator     |
-| `npm run web`           | Launch web build               |
-| `npm run typecheck`     | `tsc --noEmit`                 |
-| `npm run lint`          | ESLint over the source tree    |
-| `npm run lint:fix`      | ESLint with `--fix`            |
-| `npm run format`        | Prettier write across the repo |
-| `npm run format:check`  | Prettier verify (CI-friendly)  |
-| `npm test`              | Run Jest test suite            |
-| `npm run test:watch`    | Jest in watch mode             |
-| `npm run test:coverage` | Jest with coverage report      |
+| Script                  | Purpose                                                                  |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `npm start`             | Start Metro / Expo dev server                                            |
+| `npm run ios`           | Launch on iOS Simulator                                                  |
+| `npm run android`       | Launch on Android emulator                                               |
+| `npm run web`           | Launch web build                                                         |
+| `npm run typecheck`     | `tsc --noEmit`                                                           |
+| `npm run lint`          | ESLint over the source tree                                              |
+| `npm run lint:fix`      | ESLint with `--fix`                                                      |
+| `npm run format`        | Prettier write across the repo                                           |
+| `npm run format:check`  | Prettier verify (CI-friendly)                                            |
+| `npm test`              | Run Jest test suite                                                      |
+| `npm run test:watch`    | Jest in watch mode                                                       |
+| `npm run test:coverage` | Jest with coverage report                                                |
+| `npm run test:rls`      | RLS integration test (needs a local Supabase stack; see `docs/SETUP.md`) |
 
 ## 🧪 Quality Gates
 
@@ -148,13 +166,13 @@ Every push and PR runs through:
 - ✅ **TypeScript strict** — `tsc --noEmit` must be error-free
 - ✅ **ESLint** (`eslint-config-expo` + Prettier compatibility) — `--max-warnings=0`
 - ✅ **Prettier** formatting check
-- ✅ **Jest** — currently **148 tests** across `lib/` logic (`env`, `coach-messages`, `queries`, `purchases`, `streaks`, `safety`, `pin`, `outbox`, `insights`, `sessionStorage`), `components/` UI (`Button`, `EnvBanner`), and the RLS policy shape in `db/*.sql` (`schema-policies`); a coverage threshold ratchets up, never down; coverage uploaded to Codecov
-- ✅ **pytest** — the `rag/` service (30 tests, all network mocked): token verification before any Gemini spend, per-user rate limiting, and the user-JWT isolation contract
+- ✅ **Jest** — **259 tests** across `lib/` logic (`queries`, `streaks`, `coach-memory`, `coach-prompt`, `safety`, `outbox`, `pin`, `purchases`, `subscription`, `demo`, `rag`, `gemini`, `env`, `insights`, `sessionStorage`), `components/` UI, and the RLS/entitlement policy shape in `db/*.sql`. Day-bucketing and streak edge cases near midnight run with the worker's real time zone pinned to **Asia/Kolkata** and **America/Los_Angeles** (`test-utils/timezone-env.js`). Coverage is ratcheted per layer (`lib/` ≥ 75%) and uploaded to Codecov
+- ✅ **RLS integration test** (opt-in, `npm run test:rls`) — two real users against a local Supabase stack: no cross-user reads/writes, no self-granted Pro, duplicate set numbers rejected. Skipped automatically when no stack is configured
+- ✅ **pytest** — the `rag/` service (56 tests, all network mocked): token verification before any Gemini spend, per-user rate limiting, server-side Pro enforcement, the RevenueCat webhook, and the user-JWT isolation contract
 - ✅ **markdownlint-cli2** — docs quality
 - ✅ **CodeQL** security scanning (JavaScript/TypeScript **and** Python, `security-and-quality` query set)
 - ✅ **Dependabot** — grouped weekly updates for npm, pip (`rag/`), and GitHub Actions; actions are pinned to commit SHAs
 - ✅ **release-please** — automated CHANGELOG + version bumps from Conventional Commits
-- ✅ **Stale bot** — hygiene sweep for abandoned issues/PRs
 - ✅ **EAS Preview** (opt-in) — automated iOS/Android builds on PRs when `EXPO_TOKEN` is configured
 
 Locally, Husky wires the same guardrails into:
@@ -167,7 +185,12 @@ Locally, Husky wires the same guardrails into:
 
 Contributions are welcome. Please read [`CONTRIBUTING.md`](./CONTRIBUTING.md) and follow the [Code of Conduct](./CODE_OF_CONDUCT.md). All commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).
 
-## 🔐 Security
+## 🔐 Security model
+
+- **Isolation is a database invariant.** Every user table has owner-only RLS; the RAG service forwards the user's JWT instead of using a service key, so Postgres decides what each request can see ([`docs/RAG.md`](./docs/RAG.md)).
+- **Paid resources are checked on the server.** The paywall decides what the app shows; anything that spends the operator's Gemini key re-checks the `pro` entitlement server-side. Users can read but never write their entitlement row ([`docs/MONETIZATION.md`](./docs/MONETIZATION.md#where-pro-is-enforced)).
+- **Model output is untrusted input.** Coach memories are validated before storage and fed back only as quoted, delimited data ([`lib/coach-memory.ts`](./lib/coach-memory.ts)); self-harm signals bypass the model entirely ([`lib/safety.ts`](./lib/safety.ts)).
+- **No secrets in the bundle.** Each user's Gemini key and PIN hash live in the OS keychain; the Supabase session is encrypted at rest.
 
 Found a vulnerability? Please **do not** open a public issue. Review [`SECURITY.md`](./SECURITY.md) for private disclosure instructions.
 
