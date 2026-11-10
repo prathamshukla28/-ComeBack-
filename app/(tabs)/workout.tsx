@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Confetti } from '@/components/Confetti';
 import { Button, Card, Empty, H1, H2, Input, P, Screen } from '@/components/ui';
 import { heavy, success } from '@/lib/haptics';
@@ -16,6 +16,7 @@ import {
 } from '@/lib/queries';
 import { localDay } from '@/lib/streaks';
 import { useTheme } from '@/lib/theme';
+import { notify } from '@/lib/notify';
 
 export default function Workout() {
   const { c, brand } = useTheme();
@@ -65,15 +66,12 @@ export default function Workout() {
       if (result?.pr) {
         heavy();
         setConfetti(true);
-        Alert.alert(
-          '🎉 NEW PR',
-          `${result.name}: ${result.w}kg × ${result.r}\nEstimated 1RM went up.`,
-        );
+        notify('🎉 NEW PR', `${result.name}: ${result.w}kg × ${result.r}\nEstimated 1RM went up.`);
       } else {
         success();
       }
     },
-    onError: (e: any) => Alert.alert('Cannot log set', e.message),
+    onError: (e: any) => notify('Cannot log set', e.message),
   });
 
   const del = useMutation({

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
 import { Confetti } from '@/components/Confetti';
 import { Button, Card, H1, H2, P, Screen } from '@/components/ui';
@@ -21,6 +21,7 @@ import {
   type HabitKind,
 } from '@/lib/queries';
 import { useTheme } from '@/lib/theme';
+import { notify } from '@/lib/notify';
 
 function vibeColor(v: Vibe, theme: any) {
   if (v === 'good') return theme.success;
@@ -83,7 +84,7 @@ function HabitBlock({
     mutationFn: () => undoLastHabit(kind),
     onSuccess: (ok) => {
       inv();
-      if (!ok) Alert.alert('Nothing to undo');
+      if (!ok) notify('Nothing to undo');
       else setFlash(null);
     },
   });

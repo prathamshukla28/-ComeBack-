@@ -1,4 +1,4 @@
-import { BASE_LOCK_MS, FREE_ATTEMPTS, computeLockout } from '../pin';
+import { BASE_LOCK_MS, FREE_ATTEMPTS, computeLockout, pinLockAvailable } from '../pin';
 
 const NOW = 1_700_000_000_000;
 
@@ -27,5 +27,20 @@ describe('computeLockout', () => {
   it('caps the lockout at one hour', () => {
     const d = computeLockout(FREE_ATTEMPTS + 20, NOW);
     expect(d.lockedUntil - NOW).toBe(60 * 60_000);
+  });
+});
+
+describe('pinLockAvailable', () => {
+  it('is available on native platforms', () => {
+    expect(pinLockAvailable('ios', false)).toBe(true);
+    expect(pinLockAvailable('android', false)).toBe(true);
+  });
+
+  it('is unavailable on web, which has no keychain', () => {
+    expect(pinLockAvailable('web', false)).toBe(false);
+  });
+
+  it('stays available on web in dev-only demo-data mode (in-memory demo PIN)', () => {
+    expect(pinLockAvailable('web', true)).toBe(true);
   });
 });

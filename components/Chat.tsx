@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -17,7 +16,10 @@ import { SymbolView } from 'expo-symbols';
 import { sendMessage, type ChatTurn } from '@/lib/gemini';
 import { clearThread, loadThread, saveMessage, type ChatThread } from '@/lib/queries';
 import { CRISIS_RESOURCES, detectCrisis } from '@/lib/safety';
+import { GEMINI_KEY_UNAVAILABLE, GEMINI_KEY_WEB_NOTICE } from '@/lib/secureStore';
 import { useTheme } from '@/lib/theme';
+import { tabBarHeight } from '@/constants/Layout';
+import { notify } from '@/lib/notify';
 
 export interface ChatConfig {
   thread: ChatThread;
@@ -86,11 +88,15 @@ export function Chat({ config }: { config: ChatConfig }) {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['chat', config.thread] }),
     onError: (e: any) => {
+      if (e?.message === GEMINI_KEY_UNAVAILABLE) {
+        notify('AI chat needs the mobile app', GEMINI_KEY_WEB_NOTICE);
+        return;
+      }
       const msg =
         e?.message === 'GEMINI_KEY_MISSING'
           ? 'Paste your Gemini API key in Settings first.'
           : (e?.message ?? 'Something went wrong');
-      Alert.alert('Gemini error', msg);
+      notify('Gemini error', msg);
     },
   });
 
@@ -102,7 +108,12 @@ export function Chat({ config }: { config: ChatConfig }) {
   };
 
   return (
-    <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: c.background }}>
+    // The tab bar is absolutely positioned over the bottom of the screen (and already
+    // pads for the home indicator), so keep the message box clear of it.
+    <SafeAreaView
+      edges={[]}
+      style={{ flex: 1, backgroundColor: c.background, paddingBottom: tabBarHeight() }}
+    >
       <View style={[styles.header, { borderColor: c.border }]}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: c.text }]}>{config.title}</Text>
@@ -112,7 +123,7 @@ export function Chat({ config }: { config: ChatConfig }) {
           accessibilityRole="button"
           accessibilityLabel="Clear conversation"
           onPress={() =>
-            Alert.alert('Clear conversation?', 'This deletes all messages in this chat.', [
+            notify('Clear conversation?', 'This deletes all messages in this chat.', [
               { text: 'Cancel', style: 'cancel' },
               {
                 text: 'Clear',

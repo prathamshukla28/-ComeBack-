@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 
 import Colors from '@/constants/Colors';
+import { tabBarHeight } from '@/constants/Layout';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 
@@ -29,7 +30,7 @@ export default function TabLayout() {
           backgroundColor: (theme as any).tabBar ?? theme.card,
           borderTopColor: (theme as any).tabBarBorder ?? theme.border,
           borderTopWidth: StyleSheet.hairlineWidth,
-          height: Platform.OS === 'ios' ? 88 : 68,
+          height: tabBarHeight(),
           paddingTop: 8,
           paddingBottom: Platform.OS === 'ios' ? 30 : 12,
           position: 'absolute',

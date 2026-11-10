@@ -1,45 +1,53 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { Button, Card, Empty, H1, Input, P, Screen } from '@/components/ui';
 import { habitCountToday, habitLast7Days, logHabit, undoLastHabit } from '@/lib/queries';
-import { hasPin, setPin, verifyPin } from '@/lib/pin';
+import { hasPin, pinLockAvailable, setPin, verifyPin } from '@/lib/pin';
 import { useTheme } from '@/lib/theme';
+import { notify } from '@/lib/notify';
 
 export default function Intimacy() {
   const [unlocked, setUnlocked] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [needsPinSetup, setNeedsPinSetup] = useState(false);
   const [checking, setChecking] = useState(true);
+  const lockAvailable = pinLockAvailable();
 
   useEffect(() => {
+    if (!lockAvailable) return;
     (async () => {
-      const configured = await hasPin();
-      if (!configured) {
-        setNeedsPinSetup(true);
-        setChecking(false);
-        return;
-      }
-      // Try biometric first
-      const hasHW = await LocalAuthentication.hasHardwareAsync();
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      if (hasHW && enrolled) {
-        const res = await LocalAuthentication.authenticateAsync({
-          promptMessage: 'Unlock Intimacy',
-          disableDeviceFallback: false,
-          fallbackLabel: 'Use PIN',
-        });
-        if (res.success) {
-          setUnlocked(true);
+      try {
+        const configured = await hasPin();
+        if (!configured) {
+          setNeedsPinSetup(true);
+          return;
         }
+        // Try biometric first
+        const hasHW = await LocalAuthentication.hasHardwareAsync();
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        if (hasHW && enrolled) {
+          const res = await LocalAuthentication.authenticateAsync({
+            promptMessage: 'Unlock Intimacy',
+            disableDeviceFallback: false,
+            fallbackLabel: 'Use PIN',
+          });
+          if (res.success) {
+            setUnlocked(true);
+          }
+        }
+      } catch (e) {
+        // Fail closed: a keychain/biometric error leaves the tab on the lock screen.
+        console.warn('[ComeBack] intimacy lock check failed', e);
+      } finally {
+        setChecking(false);
       }
-      setChecking(false);
     })();
-  }, []);
+  }, [lockAvailable]);
 
   const savePin = async () => {
-    if (pinInput.length < 4) return Alert.alert('PIN too short', 'Use at least 4 digits.');
+    if (pinInput.length < 4) return notify('PIN too short', 'Use at least 4 digits.');
     await setPin(pinInput);
     setPinInput('');
     setNeedsPinSetup(false);
@@ -55,16 +63,27 @@ export default function Intimacy() {
     }
     if (res.lockedUntil) {
       const secs = Math.max(1, Math.ceil((res.lockedUntil - Date.now()) / 1000));
-      Alert.alert('Too many attempts', `Locked for ${secs}s. Take a breath.`);
+      notify('Too many attempts', `Locked for ${secs}s. Take a breath.`);
     } else if (res.attemptsLeft != null) {
-      Alert.alert(
-        'Wrong PIN',
-        `${res.attemptsLeft} attempt${res.attemptsLeft === 1 ? '' : 's'} left.`,
-      );
+      notify('Wrong PIN', `${res.attemptsLeft} attempt${res.attemptsLeft === 1 ? '' : 's'} left.`);
     } else {
-      Alert.alert('Wrong PIN');
+      notify('Wrong PIN');
     }
   };
+
+  // No keychain on this platform (web): the tab stays locked, never unlocks.
+  if (!lockAvailable) {
+    return (
+      <Screen>
+        <H1>🔒 Locked on web</H1>
+        <P muted>
+          This tab is protected by Face ID / Touch ID and a PIN kept in your phone's keychain.
+          Browsers don't have a keychain, so on the web it stays locked. Open ComeBack on your phone
+          to use it.
+        </P>
+      </Screen>
+    );
+  }
 
   if (checking)
     return (
@@ -142,7 +161,7 @@ function IntimacyContent() {
     mutationFn: () => undoLastHabit('intimacy'),
     onSuccess: (ok) => {
       inv();
-      if (!ok) Alert.alert('Nothing to undo');
+      if (!ok) notify('Nothing to undo');
     },
   });
 

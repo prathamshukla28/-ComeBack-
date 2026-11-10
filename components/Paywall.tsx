@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { Button, Caption, Card, Eyebrow, H1, P, Screen } from '@/components/ui';
 import { useSubscription } from '@/lib/subscription';
 import { useTheme } from '@/lib/theme';
+import { notify } from '@/lib/notify';
 
 // Only list what Pro actually unlocks today (see docs/MONETIZATION.md).
 const BENEFITS = [
@@ -54,11 +55,11 @@ export function Paywall({
     try {
       const ok = await purchase(pkg);
       if (ok) {
-        Alert.alert('Welcome to Pro 🎉', 'Everything is unlocked. Thank you for the support.');
+        notify('Welcome to Pro 🎉', 'Everything is unlocked. Thank you for the support.');
         onClose?.();
       }
     } catch (e: any) {
-      Alert.alert('Purchase failed', e?.message ?? 'Please try again.');
+      notify('Purchase failed', e?.message ?? 'Please try again.');
     } finally {
       setBusy(null);
     }
@@ -68,7 +69,7 @@ export function Paywall({
     setBusy('restore');
     try {
       const ok = await restore();
-      Alert.alert(ok ? 'Restored' : 'Nothing to restore', ok ? 'Your Pro access is back.' : '');
+      notify(ok ? 'Restored' : 'Nothing to restore', ok ? 'Your Pro access is back.' : '');
       if (ok) onClose?.();
     } finally {
       setBusy(null);

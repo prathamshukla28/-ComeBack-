@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { Button, Card, H1, H2, Input, P, Screen } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { useSubscription } from '@/lib/subscription';
@@ -11,7 +11,14 @@ import {
   scheduleDailyReminders,
 } from '@/lib/notifications';
 import { loadProfile, upsertProfile } from '@/lib/queries';
-import { clearGeminiKey, getGeminiKey, saveGeminiKey } from '@/lib/secureStore';
+import {
+  clearGeminiKey,
+  GEMINI_KEY_WEB_NOTICE,
+  geminiKeyStorageAvailable,
+  getGeminiKey,
+  saveGeminiKey,
+} from '@/lib/secureStore';
+import { notify } from '@/lib/notify';
 
 export default function Settings() {
   const { session, signOut } = useAuth();
@@ -25,6 +32,7 @@ export default function Settings() {
   const [height, setHeight] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
   const [hasKey, setHasKey] = useState(false);
+  const keyStorage = geminiKeyStorageAvailable();
 
   useEffect(() => {
     if (profile.data) {
@@ -36,8 +44,11 @@ export default function Settings() {
   }, [profile.data]);
 
   useEffect(() => {
-    getGeminiKey().then((k) => setHasKey(!!k));
-  }, []);
+    if (!keyStorage) return;
+    getGeminiKey()
+      .then((k) => setHasKey(!!k))
+      .catch((e) => console.warn('[ComeBack] could not read the Gemini key', e));
+  }, [keyStorage]);
 
   const saveProfile = useMutation({
     mutationFn: async () => {
@@ -51,29 +62,38 @@ export default function Settings() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['profile'] });
-      Alert.alert('Saved');
+      notify('Saved');
     },
-    onError: (e: any) => Alert.alert('Save failed', e.message),
+    onError: (e: any) => notify('Save failed', e.message),
   });
 
   const onSaveKey = async () => {
+    if (!keyStorage) return notify('Not available on web', GEMINI_KEY_WEB_NOTICE);
     const trimmed = geminiKey.trim();
-    if (!trimmed) return Alert.alert('Paste your key first');
+    if (!trimmed) return notify('Paste your key first');
     if (trimmed.length < 20)
-      return Alert.alert('Key looks too short', 'Double-check you copied the whole key.');
-    await saveGeminiKey(trimmed);
+      return notify('Key looks too short', 'Double-check you copied the whole key.');
+    try {
+      await saveGeminiKey(trimmed);
+    } catch (e: any) {
+      return notify('Could not save the key', e?.message ?? 'Please try again.');
+    }
     setGeminiKey('');
     setHasKey(true);
-    Alert.alert(
+    notify(
       'Saved',
       'Key stored securely on this device only. If the chat says "authentication failed", the key format is wrong — generate a new one at aistudio.google.com/apikey.',
     );
   };
 
   const onClearKey = async () => {
-    await clearGeminiKey();
+    try {
+      await clearGeminiKey();
+    } catch (e: any) {
+      return notify('Could not remove the key', e?.message ?? 'Please try again.');
+    }
     setHasKey(false);
-    Alert.alert('Key removed');
+    notify('Key removed');
   };
 
   return (
@@ -96,7 +116,7 @@ export default function Settings() {
             variant="secondary"
             onPress={async () => {
               const ok = await restore();
-              Alert.alert(ok ? 'Restored' : 'Nothing to restore');
+              notify(ok ? 'Restored' : 'Nothing to restore');
             }}
           />
         ) : (
@@ -150,7 +170,11 @@ export default function Settings() {
         </P>
         <View style={{ height: 8 }} />
         <P muted style={{ fontSize: 13 }}>
-          {hasKey ? '✅ Key is set' : '⚠️ No key yet — AI chats will not work'}
+          {!keyStorage
+            ? `🔒 ${GEMINI_KEY_WEB_NOTICE}`
+            : hasKey
+              ? '✅ Key is set'
+              : '⚠️ No key yet — AI chats will not work'}
         </P>
         <View style={{ height: 12 }} />
         <Input
@@ -160,9 +184,10 @@ export default function Settings() {
           autoCapitalize="none"
           autoCorrect={false}
           secureTextEntry
+          editable={keyStorage}
         />
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Button title="Save key" onPress={onSaveKey} style={{ flex: 1 }} />
+          <Button title="Save key" onPress={onSaveKey} disabled={!keyStorage} style={{ flex: 1 }} />
           {hasKey && (
             <Button title="Remove" variant="danger" onPress={onClearKey} style={{ flex: 1 }} />
           )}
@@ -190,12 +215,12 @@ export default function Settings() {
             onPress={async () => {
               const ok = await requestNotificationPermission();
               if (!ok)
-                return Alert.alert(
+                return notify(
                   'Permission denied',
                   'Enable notifications for ComeBack in iOS Settings.',
                 );
               const n = await scheduleDailyReminders();
-              Alert.alert('Done', `${n} daily reminders scheduled.`);
+              notify('Done', `${n} daily reminders scheduled.`);
             }}
           />
           <Button
@@ -204,7 +229,7 @@ export default function Settings() {
             style={{ flex: 1 }}
             onPress={async () => {
               await clearAllReminders();
-              Alert.alert('Reminders off');
+              notify('Reminders off');
             }}
           />
         </View>
@@ -217,7 +242,7 @@ export default function Settings() {
           variant="danger"
           icon="rectangle.portrait.and.arrow.right"
           onPress={() =>
-            Alert.alert('Sign out?', '', [
+            notify('Sign out?', '', [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Sign out', style: 'destructive', onPress: () => signOut() },
             ])

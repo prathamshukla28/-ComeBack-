@@ -1,4 +1,4 @@
-import { getGeminiKey } from './secureStore';
+import { GEMINI_KEY_UNAVAILABLE, geminiKeyStorageAvailable, getGeminiKey } from './secureStore';
 
 export type ChatRole = 'user' | 'model';
 export interface ChatTurn {
@@ -19,6 +19,8 @@ async function callGemini(
   history: ChatTurn[],
   userMessage: string,
 ): Promise<string> {
+  // Web has no keychain to hold the key; say so instead of "paste your key".
+  if (!geminiKeyStorageAvailable()) throw new Error(GEMINI_KEY_UNAVAILABLE);
   const key = await getGeminiKey();
   if (!key) throw new Error('GEMINI_KEY_MISSING');
 

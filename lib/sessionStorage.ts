@@ -144,12 +144,23 @@ function keyNameFor(storageKey: string): string {
 
 /* ---------- adapter ---------- */
 
+/** True while static web output is being rendered in Node (no `window`). */
+export const isServer = (): boolean => typeof window === 'undefined';
+
 export function createEncryptedStorage(options: { secure: boolean }): SessionStorageAdapter {
   if (!options.secure) {
+    // Static web output pre-renders every route in Node, where AsyncStorage's web
+    // backend (localStorage) touches `window` and rejects. There is no session to
+    // read on the server anyway, so the server sees "signed out" and the browser
+    // reads the real session on hydration.
     return {
-      getItem: (key) => AsyncStorage.getItem(key),
-      setItem: (key, value) => AsyncStorage.setItem(key, value),
-      removeItem: (key) => AsyncStorage.removeItem(key),
+      getItem: async (key) => (isServer() ? null : AsyncStorage.getItem(key)),
+      setItem: async (key, value) => {
+        if (!isServer()) await AsyncStorage.setItem(key, value);
+      },
+      removeItem: async (key) => {
+        if (!isServer()) await AsyncStorage.removeItem(key);
+      },
     };
   }
 

@@ -180,4 +180,20 @@ describe('plain adapter (web)', () => {
     await storage.removeItem(KEY);
     expect(mockAsyncStore.size).toBe(0);
   });
+
+  it('is inert while static web output renders in Node (no window)', async () => {
+    const g = globalThis as { window?: unknown };
+    const savedWindow = g.window;
+    delete g.window;
+    try {
+      mockAsyncStore.set(KEY, SESSION);
+      expect(await storage.getItem(KEY)).toBeNull();
+      await storage.setItem(KEY, 'other');
+      await storage.removeItem(KEY);
+      expect(mockAsyncStore.get(KEY)).toBe(SESSION);
+    } finally {
+      g.window = savedWindow;
+      mockAsyncStore.clear();
+    }
+  });
 });

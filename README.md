@@ -34,7 +34,7 @@ A privacy-first habit and workout tracker with an AI coach — built with Expo, 
 - 🧠 **Two AI chats** — a **Fitness Guru** (optionally RAG-grounded in a curated exercise KB + your own history via pgvector) and a Pro **Life Coach** with long-term memory, both on Google Gemini
 - 🧷 **Injection-resistant coach memory** — facts the model extracts are schema-validated, instruction-shaped content is dropped, and memories re-enter prompts only as quoted, delimited data
 - 💳 **ComeBack Pro** — RevenueCat paywall on the client, **enforced server-side** for anything that spends the operator's API key (RLS-protected entitlements fed by a RevenueCat webhook)
-- 🔒 **Biometric lock** — Face ID / Touch ID gate for sensitive tabs, with a salted-hashed, rate-limited PIN fallback
+- 🔒 **Biometric lock** — Face ID / Touch ID gate for sensitive tabs, with a salted-hashed, rate-limited PIN fallback (the tab stays locked on web, which has no keychain)
 - 🔔 **Local notifications** — gentle nudges when your streaks are on the line
 - 🎨 **Adaptive theming** — polished light and dark palettes
 - 🎉 **Delightful micro-interactions** — haptics, animated numbers, confetti wins
@@ -42,12 +42,17 @@ A privacy-first habit and workout tracker with an AI coach — built with Expo, 
 
 ## 📱 Screenshots
 
-<!-- Capture these on a device/simulator and save them under docs/screenshots/, then
-     replace each "to capture" cell with ![Today](docs/screenshots/today.png) etc. -->
+> **Demo data.** These are real renders of the app's own screens (Expo **web** build, 390×844 @3x, headless Chromium), running on the dev-only demo-data mode: an in-memory, clearly badged set of sample rows, with no Supabase project and no Gemini calls. The two chat transcripts are seeded sample text, **not** live model replies. Two web-only quirks: SF Symbols icons don't render on web, and the bottom tab bar is cropped out. Reproduce with `EXPO_PUBLIC_DEMO_DATA=1 EXPO_PUBLIC_DEMO_PRO=1 npx expo start --web`.
 
-|    Today     |   Workout    |    Habits    |    Coach     |
-| :----------: | :----------: | :----------: | :----------: |
-| _to capture_ | _to capture_ | _to capture_ | _to capture_ |
+|                                 Today                                  |                                            Habits                                            |                                     Workout                                     |
+| :--------------------------------------------------------------------: | :------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------: |
+| ![Today dashboard with streaks, demo data](docs/screenshots/today.png) |  ![Habit tracker showing a clean run and a relapse, demo data](docs/screenshots/habits.png)  | ![Workout logger right after a new PR, demo data](docs/screenshots/workout.png) |
+|       Daily dashboard: today's counts and streaks _(demo data)_        | A 9-day clean run vs. a record of 14, and a relapse reframed against your best _(demo data)_ |  85 kg × 5 beats the stored bench e1RM, so the PR confetti fires _(demo data)_  |
+
+|                           Fitness Guru                           |                                Life Coach (Pro)                                |                                     PIN lock                                      |
+| :--------------------------------------------------------------: | :----------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: |
+| ![Fitness Guru chat, demo transcript](docs/screenshots/guru.png) | ![Life Coach chat under demo Pro, demo transcript](docs/screenshots/coach.png) |         ![Private tab behind the PIN lock](docs/screenshots/pin-lock.png)         |
+| Guru chat with a seeded demo transcript, not a live Gemini reply |      Coach unlocked by the dev-only **DEMO PRO** flag, seeded transcript       | Private tab locked: Face ID with a hashed, rate-limited PIN fallback _(demo PIN)_ |
 
 ## ▶️ Run the demo
 
@@ -62,7 +67,15 @@ A privacy-first habit and workout tracker with an AI coach — built with Expo, 
 
    The Coach tab shows an amber **DEMO PRO** banner. This flag only affects development builds: it requires `__DEV__`, refuses when `NODE_ENV` is `production`, and never grants server-side Pro (see [`lib/demo.ts`](./lib/demo.ts), [`docs/MONETIZATION.md`](./docs/MONETIZATION.md#demo-mode-dev-builds-only)).
 
-5. **RAG-grounded Guru (optional)** — run the service in [`rag/`](./rag/README.md), set `EXPO_PUBLIC_RAG_URL`, and grant your test user Pro from the SQL editor (snippet in [`db/entitlements.sql`](./db/entitlements.sql)).
+5. **No backend at all?** Start a dev build on sample data instead:
+
+   ```bash
+   EXPO_PUBLIC_DEMO_DATA=1 npx expo start
+   ```
+
+   The app signs in a local demo user and the real screens and data layer run on an in-memory set of sample rows ([`lib/demo-data.ts`](./lib/demo-data.ts)); every screen carries an amber **DEMO DATA** badge, and the private tab's demo PIN is `1234`. Same dev-only guards as demo Pro; nothing is sent to Supabase.
+
+6. **RAG-grounded Guru (optional)** — run the service in [`rag/`](./rag/README.md), set `EXPO_PUBLIC_RAG_URL`, and grant your test user Pro from the SQL editor (snippet in [`db/entitlements.sql`](./db/entitlements.sql)).
 
 ## 🧱 Tech Stack
 
@@ -131,6 +144,7 @@ Full walk-through with Supabase provisioning and schema import lives in [`docs/S
 │   ├── safety.ts           # Crisis detection + safety preamble
 │   ├── purchases.ts        # RevenueCat wrapper
 │   ├── subscription.tsx    # Pro state context (+ dev-only demo mode, demo.ts)
+│   ├── demo.ts / demo-data.ts  # dev-only demo Pro + in-memory sample data (inert in prod)
 │   ├── rag.ts / gemini.ts  # AI clients
 │   ├── pin.ts, sessionStorage.ts, secureStore.ts  # on-device secrets
 │   └── env.ts              # zod-validated env
@@ -166,7 +180,7 @@ Every push and PR runs through:
 - ✅ **TypeScript strict** — `tsc --noEmit` must be error-free
 - ✅ **ESLint** (`eslint-config-expo` + Prettier compatibility) — `--max-warnings=0`
 - ✅ **Prettier** formatting check
-- ✅ **Jest** — **259 tests** across `lib/` logic (`queries`, `streaks`, `coach-memory`, `coach-prompt`, `safety`, `outbox`, `pin`, `purchases`, `subscription`, `demo`, `rag`, `gemini`, `env`, `insights`, `sessionStorage`), `components/` UI, and the RLS/entitlement policy shape in `db/*.sql`. Day-bucketing and streak edge cases near midnight run with the worker's real time zone pinned to **Asia/Kolkata** and **America/Los_Angeles** (`test-utils/timezone-env.js`). Coverage is ratcheted per layer (`lib/` ≥ 75%) and uploaded to Codecov
+- ✅ **Jest** — **296 tests** across `lib/` logic (`queries`, `streaks`, `coach-memory`, `coach-prompt`, `safety`, `outbox`, `pin`, `purchases`, `subscription`, `demo`, `demo-data`, `notify`, `secureStore`, `rag`, `gemini`, `env`, `insights`, `sessionStorage`), `components/` UI, and the RLS/entitlement policy shape in `db/*.sql`. Day-bucketing and streak edge cases near midnight run with the worker's real time zone pinned to **Asia/Kolkata** and **America/Los_Angeles** (`test-utils/timezone-env.js`). Coverage is ratcheted per layer (`lib/` ≥ 75%) and uploaded to Codecov
 - ✅ **RLS integration test** (opt-in, `npm run test:rls`) — two real users against a local Supabase stack: no cross-user reads/writes, no self-granted Pro, duplicate set numbers rejected. Skipped automatically when no stack is configured
 - ✅ **pytest** — the `rag/` service (56 tests, all network mocked): token verification before any Gemini spend, per-user rate limiting, server-side Pro enforcement, the RevenueCat webhook, and the user-JWT isolation contract
 - ✅ **markdownlint-cli2** — docs quality

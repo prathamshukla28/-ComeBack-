@@ -1,5 +1,8 @@
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+import { demoDataEnabled } from './demo';
+import { createMemoryStore, DEMO_PIN_HASH, type KeyValueStore } from './demo-data';
 
 /**
  * Intimacy-tab PIN: hashed at rest and rate-limited on verify.
@@ -21,6 +24,24 @@ const K_PIN_LEGACY = 'comeback.intimacy.pin';
 const opts: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
+
+// Dev-only demo-data mode (see ./demo) keeps the PIN in memory, preset to the demo
+// PIN "1234", so the lock screen also works on web, which has no SecureStore.
+// Inert in production builds.
+const demoStore = demoDataEnabled();
+const store: KeyValueStore = demoStore
+  ? createMemoryStore({ [K_PIN]: DEMO_PIN_HASH })
+  : SecureStore;
+
+/**
+ * Whether this platform can hold the PIN at all. Browsers have no keychain
+ * (expo-secure-store has no web backend), so on web the private tab must stay
+ * locked rather than fall back to a weaker store. Demo-data mode keeps its
+ * in-memory demo PIN everywhere.
+ */
+export function pinLockAvailable(os: string = Platform.OS, demo: boolean = demoStore): boolean {
+  return demo || os !== 'web';
+}
 
 /** Free guesses before lockouts kick in. */
 export const FREE_ATTEMPTS = 5;
@@ -72,7 +93,7 @@ async function hashPin(pin: string, saltHex: string): Promise<string> {
 }
 
 async function getLock(): Promise<LockState> {
-  const raw = await SecureStore.getItemAsync(K_LOCK, opts);
+  const raw = await store.getItemAsync(K_LOCK, opts);
   if (!raw) return { attempts: 0, lockedUntil: 0 };
   try {
     const parsed = JSON.parse(raw);
@@ -86,22 +107,22 @@ async function getLock(): Promise<LockState> {
 }
 
 async function setLock(state: LockState): Promise<void> {
-  await SecureStore.setItemAsync(K_LOCK, JSON.stringify(state), opts);
+  await store.setItemAsync(K_LOCK, JSON.stringify(state), opts);
 }
 
 async function clearLock(): Promise<void> {
-  await SecureStore.deleteItemAsync(K_LOCK, opts);
+  await store.deleteItemAsync(K_LOCK, opts);
 }
 
 export async function hasPin(): Promise<boolean> {
-  if (await SecureStore.getItemAsync(K_PIN, opts)) return true;
-  return !!(await SecureStore.getItemAsync(K_PIN_LEGACY, opts));
+  if (await store.getItemAsync(K_PIN, opts)) return true;
+  return !!(await store.getItemAsync(K_PIN_LEGACY, opts));
 }
 
 export async function setPin(pin: string): Promise<void> {
   const salt = toHex(Crypto.getRandomBytes(16));
   const digest = await hashPin(pin, salt);
-  await SecureStore.setItemAsync(K_PIN, `${salt}:${digest}`, opts);
+  await store.setItemAsync(K_PIN, `${salt}:${digest}`, opts);
   await clearLock();
 }
 
@@ -118,8 +139,8 @@ export async function verifyPin(pin: string): Promise<VerifyResult> {
   const lock = await getLock();
   if (lock.lockedUntil > now) return { ok: false, lockedUntil: lock.lockedUntil };
 
-  const stored = await SecureStore.getItemAsync(K_PIN, opts);
-  const legacy = stored ? null : await SecureStore.getItemAsync(K_PIN_LEGACY, opts);
+  const stored = await store.getItemAsync(K_PIN, opts);
+  const legacy = stored ? null : await store.getItemAsync(K_PIN_LEGACY, opts);
   if (!stored && !legacy) return { ok: false };
 
   let match: boolean;
@@ -134,7 +155,7 @@ export async function verifyPin(pin: string): Promise<VerifyResult> {
     // Upgrade a legacy plaintext PIN to a salted hash on first successful use.
     if (!stored) {
       await setPin(pin); // writes the hash and clears the lock
-      await SecureStore.deleteItemAsync(K_PIN_LEGACY, opts);
+      await store.deleteItemAsync(K_PIN_LEGACY, opts);
     } else {
       await clearLock();
     }

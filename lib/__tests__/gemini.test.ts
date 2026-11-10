@@ -1,7 +1,10 @@
 import { generateOnce, sendMessage } from '../gemini';
 import { getGeminiKey } from '../secureStore';
 
-jest.mock('../secureStore', () => ({ getGeminiKey: jest.fn() }));
+jest.mock('../secureStore', () => ({
+  ...jest.requireActual('../secureStore'),
+  getGeminiKey: jest.fn(),
+}));
 
 const mockKey = getGeminiKey as jest.MockedFunction<typeof getGeminiKey>;
 const fetchMock = jest.fn();
@@ -59,5 +62,19 @@ describe('lib/gemini', () => {
   it('rejects an empty completion', async () => {
     respond(200, { candidates: [] });
     await expect(generateOnce('s', 'u')).rejects.toThrow(/Empty response/);
+  });
+});
+
+describe('lib/gemini on web', () => {
+  it('fails with GEMINI_KEY_UNAVAILABLE (no keychain) and never calls the API', async () => {
+    const { Platform } = require('react-native');
+    const realOS = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'web', configurable: true });
+    try {
+      await expect(sendMessage('SYS', [], 'hi')).rejects.toThrow('GEMINI_KEY_UNAVAILABLE');
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(Platform, 'OS', { value: realOS, configurable: true });
+    }
   });
 });
