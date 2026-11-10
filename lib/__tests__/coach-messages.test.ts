@@ -1,4 +1,10 @@
-import { alcoholMessage, cigaretteMessage, streakMessage, workoutMessage } from '../coach-messages';
+import {
+  alcoholMessage,
+  cigaretteMessage,
+  relapseMessage,
+  streakMessage,
+  workoutMessage,
+} from '../coach-messages';
 
 describe('cigaretteMessage', () => {
   it.each([
@@ -67,5 +73,26 @@ describe('streakMessage', () => {
     expect(streakMessage(1, 'clean').text).toContain('1 day');
     expect(streakMessage(1, 'clean').text).not.toContain('1 days');
     expect(streakMessage(2, 'clean').text).toContain('2 days');
+  });
+});
+
+describe('relapseMessage', () => {
+  it('never cold-resets: a first-ever lapse is gentle, not punishing', () => {
+    const m = relapseMessage(0, 0);
+    expect(m.vibe).toBe('ok');
+    expect(m.text.toLowerCase()).toContain('no shame');
+  });
+
+  it('frames a sub-record relapse against the record to rebuild toward', () => {
+    const m = relapseMessage(12, 40);
+    expect(m.text).toContain('12');
+    expect(m.text).toContain('40');
+    expect(m.vibe).toBe('warn');
+  });
+
+  it('celebrates when the broken run was a new personal best', () => {
+    const m = relapseMessage(50, 40);
+    expect(m.text).toContain('50');
+    expect(m.text.toLowerCase()).toContain('longest');
   });
 });

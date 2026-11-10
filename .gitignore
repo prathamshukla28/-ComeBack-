@@ -77,3 +77,12 @@ coverage/
 
 # ── Husky bypass artifacts ───────────────────────────────────────────────────
 .husky/_/
+
+# ── Local-only working notes & AI-assistant config (kept on disk, not in repo) ─
+.claude/
+CLAUDE.md
+docs/CLAUDE.md
+docs/AGENTS.md
+docs/SPEC-GAPS.md
+docs/PROJECT_AND_INTERVIEW*.md
+ComeBack-Project-and-Interview.pdf

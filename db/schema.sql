@@ -179,15 +179,68 @@ begin
   end loop;
 end $$;
 
--- Exercises: everyone can read presets; users manage their own custom ones
+-- Exercises: everyone can read presets; users manage ONLY their own custom ones.
+-- Presets (is_custom = false, owner_id null) are seed data: no client role may
+-- insert, update, or delete them. Each write policy therefore requires a row that
+-- is BOTH custom AND owned by the caller — a policy whose USING clause is true for
+-- presets would let any caller, even `anon` holding the public key, rewrite or
+-- delete the shared library. Writes are limited to `authenticated`; `anon` can read.
 drop policy if exists exercises_select_all on public.exercises;
 create policy exercises_select_all on public.exercises
   for select using (true);
 
+-- Earlier deployments shipped one FOR ALL policy under this name whose USING
+-- clause was satisfied by presets. Dropping it here closes that hole on re-run.
 drop policy if exists exercises_write_own on public.exercises;
-create policy exercises_write_own on public.exercises
-  for all using (is_custom = false or owner_id = auth.uid())
-  with check (is_custom = false or owner_id = auth.uid());
+
+drop policy if exists exercises_insert_own on public.exercises;
+create policy exercises_insert_own on public.exercises
+  for insert to authenticated
+  with check (is_custom = true and owner_id = auth.uid());
+
+drop policy if exists exercises_update_own on public.exercises;
+create policy exercises_update_own on public.exercises
+  for update to authenticated
+  using (is_custom = true and owner_id = auth.uid())
+  with check (is_custom = true and owner_id = auth.uid());
+
+drop policy if exists exercises_delete_own on public.exercises;
+create policy exercises_delete_own on public.exercises
+  for delete to authenticated
+  using (is_custom = true and owner_id = auth.uid());
+
+------------------------------------------------------------
+-- Integrity: one row per (workout, exercise, set number)
+------------------------------------------------------------
+-- The client computes set_index as "max + 1"; two quick taps can race to the same
+-- number. This index makes the loser fail with 23505 so the client retries
+-- (lib/queries.ts logSet). Before creating it, renumber 1..n every
+-- (workout, exercise) group that already contains a duplicate from an older build,
+-- preserving order (set_index, then created_at). Groups without duplicates are
+-- untouched, so once the index exists this statement is a no-op on re-run.
+with dup_groups as (
+  select distinct workout_id, exercise_name
+  from public.workout_sets
+  group by workout_id, exercise_name, set_index
+  having count(*) > 1
+),
+ranked as (
+  select s.id,
+         row_number() over (
+           partition by s.workout_id, s.exercise_name
+           order by s.set_index, s.created_at, s.id
+         ) as rn
+  from public.workout_sets s
+  join dup_groups g using (workout_id, exercise_name)
+)
+update public.workout_sets s
+   set set_index = r.rn
+  from ranked r
+ where s.id = r.id
+   and s.set_index <> r.rn;
+
+create unique index if not exists workout_sets_workout_exercise_set_uniq
+  on public.workout_sets (workout_id, exercise_name, set_index);
 
 ------------------------------------------------------------
 -- Seed: common exercises

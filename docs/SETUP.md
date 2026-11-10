@@ -46,6 +46,8 @@ Supabase = your app's cloud database. Free tier is plenty.
 2. Open `db/schema.sql` from this project on your Mac, copy the **entire file**
 3. Paste it into the Supabase SQL editor
 4. Click **Run** (or Cmd+Enter). You should see "Success. No rows returned."
+5. Optional (only if you'll run the RAG service in `rag/` or sell Pro): run
+   `db/rag.sql` and then `db/entitlements.sql` the same way.
 
 ### 2b — Get your Supabase keys
 
@@ -146,11 +148,30 @@ Scan the QR with your iPhone camera. Done.
 
 ## What's next
 
-After you confirm Phase 1 opens on your iPhone and you can log in:
+- **Grounded answers** — run the optional RAG service: [`rag/README.md`](../rag/README.md).
+- **Subscriptions** — RevenueCat + server-side Pro: [`MONETIZATION.md`](./MONETIZATION.md).
+- **Demo the Pro-only Life Coach** in a dev build without a purchase:
+  `EXPO_PUBLIC_DEMO_PRO=1 npx expo start` (inert in production builds).
 
-- **Phase 2** — Workout logging + habits (cigs, alcohol) + Dashboard
-- **Phase 3** — Intimacy tab with FaceID lock
-- **Phase 4** — Fitness Guru + Life Coach AI chats
-- **Phase 5** — Weekly summaries + data export
+## RLS integration test (optional, local only)
 
-Reply "Phase 1 works" when you can log in on your iPhone, and I'll build Phase 2.
+`db/__tests__/rls.integration.test.ts` signs in two real users against a local
+Supabase stack and proves that one cannot read, change, or delete the other's rows,
+that the anon key cannot touch the exercise presets, that nobody can self-grant Pro,
+and that duplicate set numbers are rejected. It is skipped (one visible placeholder
+test) unless the variables below are set, so `npm test` and CI never need a database.
+
+```bash
+# needs the Supabase CLI + Docker
+supabase start                                  # prints API URL, anon + service_role keys
+DB=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+psql "$DB" -f db/schema.sql -f db/rag.sql -f db/entitlements.sql
+
+SUPABASE_TEST_URL=http://127.0.0.1:54321 \
+SUPABASE_TEST_ANON_KEY=<anon key> \
+SUPABASE_TEST_SERVICE_ROLE_KEY=<service_role key> \
+npm run test:rls
+```
+
+It creates and deletes two throwaway auth users. **Never point it at a production
+project.**

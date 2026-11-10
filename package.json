@@ -30,14 +30,17 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:rls": "jest db/__tests__/rls.integration.test.ts",
     "prepare": "husky"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.45.0",
     "@tanstack/react-query": "^5.59.0",
+    "aes-js": "^3.1.2",
     "expo": "~54.0.36",
     "expo-constants": "~18.0.13",
+    "expo-crypto": "~15.0.9",
     "expo-font": "~14.0.12",
     "expo-haptics": "~15.0.8",
     "expo-linking": "~8.0.12",
@@ -52,14 +55,14 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-purchases": "^8.11.0",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
-    "zod": "^3.23.8",
-    "zustand": "^5.0.0"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@babel/plugin-transform-class-properties": "^8.0.1",
@@ -68,6 +71,7 @@
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@testing-library/react-native": "^12.7.2",
+    "@types/aes-js": "^3.1.4",
     "@types/jest": "^29.5.13",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "~54.0.10",

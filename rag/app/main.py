@@ -7,6 +7,11 @@ Routes:
     POST /rag/coach         grounded answer (retrieve → generate)
     POST /rag/retrieve      retrieved context + prompt preview, no generation
     POST /rag/memories      embed + upsert one user memory (under the caller's JWT)
+    POST /webhooks/revenuecat  billing events → user_entitlements (shared-secret auth)
+
+Every /rag/* route spends the service's Gemini key, so each requires a verified
+token, a free rate-limit slot, and a server-side Pro entitlement (app/entitlements.py)
+— in that order, all before any Gemini call.
 """
 
 from __future__ import annotations
@@ -17,8 +22,9 @@ import httpx
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import gemini, retrieval, supabase
+from . import gemini, retrieval, supabase, webhooks
 from .config import get_settings
+from .entitlements import require_pro
 from .prompts import SYSTEM_BY_THREAD, build_user_message
 from .schemas import (
     CoachRequest,
@@ -27,7 +33,7 @@ from .schemas import (
     MemoryOut,
     RetrieveResponse,
 )
-from .security import UserToken, require_user
+from .security import UserToken
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level)
@@ -40,6 +46,7 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Authorization", "Content-Type"],
 )
+app.include_router(webhooks.router)
 
 
 @app.get("/health")
@@ -48,7 +55,7 @@ async def health() -> dict:
 
 
 @app.post("/rag/coach", response_model=CoachResponse)
-async def coach(req: CoachRequest, user: UserToken = Depends(require_user)) -> CoachResponse:
+async def coach(req: CoachRequest, user: UserToken = Depends(require_pro)) -> CoachResponse:
     async with httpx.AsyncClient(timeout=60) as client:
         ctx = await retrieval.retrieve(
             query=req.query,
@@ -74,7 +81,7 @@ async def coach(req: CoachRequest, user: UserToken = Depends(require_user)) -> C
 
 @app.post("/rag/retrieve", response_model=RetrieveResponse)
 async def retrieve_only(
-    req: CoachRequest, user: UserToken = Depends(require_user)
+    req: CoachRequest, user: UserToken = Depends(require_pro)
 ) -> RetrieveResponse:
     """Transparency/debug endpoint: see exactly what would be fed to the model."""
     ctx = await retrieval.retrieve(
@@ -88,7 +95,7 @@ async def retrieve_only(
 
 
 @app.post("/rag/memories", response_model=MemoryOut)
-async def add_memory(mem: MemoryIn, user: UserToken = Depends(require_user)) -> MemoryOut:
+async def add_memory(mem: MemoryIn, user: UserToken = Depends(require_pro)) -> MemoryOut:
     async with httpx.AsyncClient(timeout=30) as client:
         vec = await gemini.embed(mem.content, task_type="RETRIEVAL_DOCUMENT", client=client)
         new_id = await supabase.upsert_user_memory(
