@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { demoDataEnabled } from '@/lib/demo';
 import { isEnvValid } from '@/lib/env';
 
 /**
@@ -9,8 +10,29 @@ import { isEnvValid } from '@/lib/env';
  * Supabase client (see lib/supabase.ts) and every query fails with a cryptic
  * network error. Surfacing the real cause up front saves the "why is nothing
  * loading?" debugging spiral.
+ *
+ * In the dev-only demo-data mode (see lib/demo.ts) no Supabase is needed, so it
+ * shows a "DEMO DATA" badge instead, making it obvious every screen is sample data.
  */
 export function EnvBanner() {
+  if (demoDataEnabled()) {
+    return (
+      <SafeAreaView edges={['top']} style={{ backgroundColor: '#F59E0B' }}>
+        <Text
+          accessibilityRole="text"
+          style={{
+            color: '#111',
+            textAlign: 'center',
+            fontSize: 12,
+            fontWeight: '700',
+            paddingVertical: 4,
+          }}
+        >
+          DEMO DATA · sample rows · dev build only
+        </Text>
+      </SafeAreaView>
+    );
+  }
   if (isEnvValid) return null;
   return (
     <SafeAreaView edges={['top']} style={{ backgroundColor: '#B91C1C' }}>
