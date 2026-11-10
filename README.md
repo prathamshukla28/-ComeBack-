@@ -182,7 +182,7 @@ Every push and PR runs through:
 - ✅ **Prettier** formatting check
 - ✅ **Jest** — **296 tests** across `lib/` logic (`queries`, `streaks`, `coach-memory`, `coach-prompt`, `safety`, `outbox`, `pin`, `purchases`, `subscription`, `demo`, `demo-data`, `notify`, `secureStore`, `rag`, `gemini`, `env`, `insights`, `sessionStorage`), `components/` UI, and the RLS/entitlement policy shape in `db/*.sql`. Day-bucketing and streak edge cases near midnight run with the worker's real time zone pinned to **Asia/Kolkata** and **America/Los_Angeles** (`test-utils/timezone-env.js`). Coverage is ratcheted per layer (`lib/` ≥ 75%) and uploaded to Codecov
 - ✅ **RLS integration test** (opt-in, `npm run test:rls`) — two real users against a local Supabase stack: no cross-user reads/writes, no self-granted Pro, duplicate set numbers rejected. Skipped automatically when no stack is configured
-- ✅ **pytest** — the `rag/` service (56 tests, all network mocked): token verification before any Gemini spend, per-user rate limiting, server-side Pro enforcement, the RevenueCat webhook, and the user-JWT isolation contract
+- ✅ **pytest** — the `rag/` service (60 tests, all network mocked): token verification before any Gemini spend, per-user rate limiting, server-side Pro enforcement, the RevenueCat webhook, and the user-JWT isolation contract
 - ✅ **markdownlint-cli2** — docs quality
 - ✅ **CodeQL** security scanning (JavaScript/TypeScript **and** Python, `security-and-quality` query set)
 - ✅ **Dependabot** — grouped weekly updates for npm, pip (`rag/`), and GitHub Actions; actions are pinned to commit SHAs
