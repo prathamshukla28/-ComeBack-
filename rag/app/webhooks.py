@@ -155,5 +155,7 @@ async def revenuecat_webhook(
             },
         )
 
-    logger.info("revenuecat event=%s applied=%d", event.get("type"), len(changes))
+    # The event type comes from the request body: strip line breaks so it cannot forge log lines.
+    event_type = str(event.get("type"))[:64].replace("\r\n", "").replace("\n", "").replace("\r", "")
+    logger.info("revenuecat event=%s applied=%d", event_type, len(changes))
     return {"ok": True, "applied": len(changes)}

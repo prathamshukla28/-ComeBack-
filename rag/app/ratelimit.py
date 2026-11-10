@@ -32,10 +32,10 @@ _PRUNE_AT = 10_000
 
 
 class Limiter(Protocol):
-    """A rate-limit backend. `check` records one hit for `key` and returns
-    (allowed, seconds until the caller may retry)."""
+    """A rate-limit backend."""
 
-    def check(self, key: str, now: float | None = None) -> tuple[bool, float]: ...
+    def check(self, key: str, now: float | None = None) -> tuple[bool, float]:
+        """Record one hit for `key`; return (allowed, seconds until the caller may retry)."""
 
 
 class SlidingWindowLimiter:

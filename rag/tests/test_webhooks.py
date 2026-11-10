@@ -129,6 +129,14 @@ def test_ignorable_events_are_acknowledged_without_writing(webhook_env):
     assert not write.called
 
 
+def test_event_type_cannot_forge_log_lines(webhook_env, caplog: pytest.LogCaptureFixture):
+    caplog.set_level("INFO", logger="comeback.rag.webhooks")
+    r = _post(_event(type="TEST\nCRITICAL forged line\r\nmore"))
+    assert r.status_code == 200
+    logged = [rec.getMessage() for rec in caplog.records if "revenuecat event=" in rec.getMessage()]
+    assert logged and all("\n" not in m and "\r" not in m for m in logged)
+
+
 def test_missing_event_object_is_422(webhook_env):
     assert _post({"api_version": "1.0"}).status_code == 422
 

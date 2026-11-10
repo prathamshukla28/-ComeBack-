@@ -17,7 +17,7 @@ permissions:
 # Dependabot): a moved tag cannot change what runs with repo read access here.
 jobs:
   quality:
-    name: App · Lint · Typecheck · Test
+    name: Lint · Typecheck · Test
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
