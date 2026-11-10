@@ -35,7 +35,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
 
 from . import supabase
@@ -128,7 +128,7 @@ def _authorised(header: str | None, secret: str) -> bool:
 
 @router.post("/webhooks/revenuecat")
 async def revenuecat_webhook(
-    payload: dict[str, Any],
+    request: Request,
     authorization: str | None = Header(default=None),
 ) -> dict:
     settings = get_settings()
@@ -137,6 +137,15 @@ async def revenuecat_webhook(
         raise HTTPException(status_code=404, detail="Not Found")
     if not _authorised(authorization, secret):
         raise HTTPException(status_code=401, detail="Invalid webhook authorization")
+
+    # Parsed only after the checks above, so a disabled or unauthorised endpoint never
+    # reveals body-validation errors.
+    try:
+        payload = await request.json()
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Body must be JSON") from None
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=422, detail="Body must be a JSON object")
 
     event = payload.get("event")
     if not isinstance(event, dict):

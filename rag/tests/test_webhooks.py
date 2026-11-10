@@ -55,6 +55,24 @@ def test_disabled_when_no_secret_configured():
     assert _post(_event()).status_code == 404
 
 
+def test_disabled_endpoint_is_404_even_without_a_valid_body():
+    client = TestClient(app)
+    assert client.post("/webhooks/revenuecat").status_code == 404
+    assert client.post("/webhooks/revenuecat", content=b"not json").status_code == 404
+
+
+def test_unauthorised_request_is_401_before_the_body_is_parsed(webhook_env):
+    client = TestClient(app)
+    assert client.post("/webhooks/revenuecat", content=b"not json").status_code == 401
+
+
+def test_authorised_non_json_or_non_object_body_is_422(webhook_env):
+    client = TestClient(app)
+    headers = {"Authorization": SECRET}
+    assert client.post("/webhooks/revenuecat", content=b"not json", headers=headers).status_code == 422
+    assert client.post("/webhooks/revenuecat", json=[1, 2], headers=headers).status_code == 422
+
+
 @respx.mock
 def test_wrong_or_missing_secret_is_rejected_without_writing(webhook_env):
     write = respx.post(f"{REST}/rpc/apply_entitlement_event")
