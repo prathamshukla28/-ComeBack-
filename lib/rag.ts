@@ -12,6 +12,10 @@
  *
  * When the var is unset, callers fall back to the direct Gemini path (lib/gemini.ts),
  * so the app works with or without the service running.
+ *
+ * The app only *reads* through the service. The user's retrievable history is
+ * written by `rag/ingest/user_history.py` (weekly roll-ups, never the private
+ * habit); see docs/RAG.md → "How user history gets in".
  */
 import { supabase } from './supabase';
 import type { ChatThread } from './queries';
@@ -69,17 +73,4 @@ export async function askCoach(
     throw new Error(`RAG ${res.status}: ${body.slice(0, 200)}`);
   }
   return (await res.json()) as RagAnswer;
-}
-
-/** Persist a one-off memory the coach should be able to retrieve later. */
-export async function addMemory(content: string, kind = 'note', dedupeKey?: string): Promise<void> {
-  if (!RAG_URL) return;
-  const token = await accessToken();
-  const res = await fetch(`${RAG_URL}/rag/memories`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ content, kind, dedupe_key: dedupeKey ?? null }),
-  });
-  if (res.status === 403) throw new ProRequiredError();
-  if (!res.ok) throw new Error(`RAG ${res.status}`);
 }

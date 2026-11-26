@@ -1,4 +1,4 @@
-import { CRISIS_RESOURCES, SAFETY_PREAMBLE, detectCrisis } from '../safety';
+import { CRISIS_RESOURCES, SAFETY_PREAMBLE, detectCrisis, withSafety } from '../safety';
 
 describe('detectCrisis', () => {
   const crisis = [
@@ -48,5 +48,16 @@ describe('crisis resources payload', () => {
   it('safety preamble forbids diagnosis and medication advice', () => {
     expect(SAFETY_PREAMBLE.toLowerCase()).toContain('never diagnose');
     expect(SAFETY_PREAMBLE.toLowerCase()).toContain('medication');
+  });
+});
+
+describe('withSafety', () => {
+  it('appends the preamble to a prompt that lacks it', () => {
+    expect(withSafety('SYS')).toBe(`SYS${SAFETY_PREAMBLE}`);
+  });
+
+  it('is idempotent, so a builder that already includes it is not doubled', () => {
+    const once = withSafety('SYS');
+    expect(withSafety(once)).toBe(once);
   });
 });

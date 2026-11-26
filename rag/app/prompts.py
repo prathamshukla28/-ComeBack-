@@ -7,6 +7,7 @@ memories relevant to this question, each labelled so the model can cite them.
 
 from __future__ import annotations
 
+from .safety import SAFETY_PREAMBLE
 from .schemas import KBSource, MemorySource, RetrievedContext, Thread
 
 GURU_SYSTEM = """You are the FITNESS GURU inside "ComeBack" — a no-BS, high-intensity personal trainer.
@@ -38,7 +39,12 @@ Rules:
 - NEVER give medical, legal, or crisis advice. Point to a professional for those.
 - If history is sparse, encourage logging rather than guessing."""
 
-SYSTEM_BY_THREAD: dict[Thread, str] = {"guru": GURU_SYSTEM, "coach": COACH_SYSTEM}
+# Every system prompt carries the same non-negotiable safety rules as the app's
+# direct-Gemini prompts (lib/safety.ts → app/safety.py).
+SYSTEM_BY_THREAD: dict[Thread, str] = {
+    "guru": GURU_SYSTEM + SAFETY_PREAMBLE,
+    "coach": COACH_SYSTEM + SAFETY_PREAMBLE,
+}
 
 
 def _fmt_kb(kb: list[KBSource]) -> str:

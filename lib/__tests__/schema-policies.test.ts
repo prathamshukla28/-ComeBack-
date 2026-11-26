@@ -168,3 +168,22 @@ describe('db/schema.sql — set numbering integrity', () => {
     );
   });
 });
+
+describe('db/rag.sql — vector search fits the data size', () => {
+  // SQL comments may *mention* index options; only executable statements count.
+  const code = (sql: string) => sql.replace(/--.*$/gm, '');
+  const migration = readFileSync(join(DB, 'migrations', '001_rag_exact_vector_search.sql'), 'utf8');
+
+  it('creates no ivfflat index (lists = 100 on a ~15-row KB is a recall trap)', () => {
+    expect(code(rag)).not.toMatch(/using\s+ivfflat/i);
+    expect(code(rag)).not.toMatch(/lists\s*=/i);
+  });
+
+  it('ships an idempotent migration that drops the old ivfflat indexes on existing projects', () => {
+    const sql = code(migration);
+    expect(sql).toMatch(/drop index if exists public\.exercise_kb_embedding_idx;/i);
+    expect(sql).toMatch(/drop index if exists public\.user_memories_embedding_idx;/i);
+    // drops indexes only — never a table, column or row
+    expect(sql).not.toMatch(/drop\s+(table|column)|delete\s+from|truncate/i);
+  });
+});

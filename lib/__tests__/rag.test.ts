@@ -35,7 +35,6 @@ describe('lib/rag', () => {
     const rag = loadRag(undefined);
     expect(rag.ragEnabled()).toBe(false);
     await expect(rag.askCoach('guru', 'x')).rejects.toThrow(/not configured/);
-    await expect(rag.addMemory('x')).resolves.toBeUndefined();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -70,16 +69,6 @@ describe('lib/rag', () => {
     await expect(rag.askCoach('guru', 'x')).rejects.toThrow(/Session expired/);
     respond(502, { detail: 'upstream' });
     await expect(rag.askCoach('guru', 'x')).rejects.toThrow(/RAG 502/);
-  });
-
-  it('addMemory surfaces 403 and other errors instead of failing silently', async () => {
-    const rag = loadRag('https://rag.example.com');
-    respond(403);
-    await expect(rag.addMemory('x')).rejects.toBeInstanceOf(rag.ProRequiredError);
-    respond(500);
-    await expect(rag.addMemory('x')).rejects.toThrow(/RAG 500/);
-    respond(200, { id: '1' });
-    await expect(rag.addMemory('note', 'note', 'k')).resolves.toBeUndefined();
   });
 
   it('refuses to call the service when signed out', async () => {

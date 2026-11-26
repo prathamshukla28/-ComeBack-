@@ -26,6 +26,11 @@ If you're in immediate danger, please call your local emergency number. I'll be 
  * Hard rules appended to every coach/guru system prompt. Belt-and-suspenders:
  * `detectCrisis` catches the clear cases client-side; this keeps the model in
  * bounds for everything that slips past a regex.
+ *
+ * Where it is applied: the Coach and Guru prompt builders (lib/coach-prompt.ts,
+ * lib/guru-prompt.ts) include it, and components/Chat.tsx runs every system prompt
+ * through {@link withSafety} before it reaches Gemini. The RAG service keeps a
+ * byte-identical copy (rag/app/safety.py, parity-tested in rag/tests/test_safety.py).
  */
 export const SAFETY_PREAMBLE = `
 --- Non-negotiable safety rules ---
@@ -66,4 +71,14 @@ const SELF_HARM_PATTERNS: RegExp[] = [
 export function detectCrisis(text: string): boolean {
   if (!text) return false;
   return SELF_HARM_PATTERNS.some((re) => re.test(text));
+}
+
+/**
+ * `systemPrompt` with {@link SAFETY_PREAMBLE} appended, unless it already carries
+ * it. Idempotent, so a builder that includes the preamble is not doubled.
+ */
+export function withSafety(systemPrompt: string): string {
+  return systemPrompt.includes(SAFETY_PREAMBLE)
+    ? systemPrompt
+    : `${systemPrompt}${SAFETY_PREAMBLE}`;
 }

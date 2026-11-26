@@ -11,7 +11,9 @@ Routes:
 
 Every /rag/* route spends the service's Gemini key, so each requires a verified
 token, a free rate-limit slot, and a server-side Pro entitlement (app/entitlements.py)
-— in that order, all before any Gemini call.
+— in that order, all before any Gemini call. Every generation carries the safety
+preamble, and /rag/coach answers a self-harm message with crisis resources without
+calling Gemini at all (app/safety.py).
 """
 
 from __future__ import annotations
@@ -26,11 +28,13 @@ from . import gemini, retrieval, supabase, webhooks
 from .config import get_settings
 from .entitlements import require_pro
 from .prompts import SYSTEM_BY_THREAD, build_user_message
+from .safety import CRISIS_RESOURCES, detect_crisis
 from .schemas import (
     CoachRequest,
     CoachResponse,
     MemoryIn,
     MemoryOut,
+    RetrievedContext,
     RetrieveResponse,
 )
 from .security import UserToken
@@ -54,8 +58,20 @@ async def health() -> dict:
     return {"status": "ok", "chat_model": settings.gemini_chat_model}
 
 
+# `model` value on a crisis reply: no model produced it.
+CRISIS_MODEL = "crisis-resources"
+
+
 @app.post("/rag/coach", response_model=CoachResponse)
 async def coach(req: CoachRequest, user: UserToken = Depends(require_pro)) -> CoachResponse:
+    # Safety gate, mirroring the app's: a self-harm signal never reaches Gemini (nor
+    # retrieval). The caller gets vetted human crisis resources instead.
+    if detect_crisis(req.query):
+        logger.info("coach thread=%s sub=%s crisis=1", req.thread, user.subject)
+        return CoachResponse(
+            answer=CRISIS_RESOURCES, sources=RetrievedContext(), model=CRISIS_MODEL
+        )
+
     async with httpx.AsyncClient(timeout=60) as client:
         ctx = await retrieval.retrieve(
             query=req.query,

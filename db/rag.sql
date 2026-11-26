@@ -11,7 +11,8 @@
 --     (and therefore RLS) is always in force. The Python service NEVER uses the
 --     service_role key for user data; it forwards the end user's access token.
 --   * Cosine distance (`<=>`) with normalized-friendly ordering; we expose a
---     `similarity` = 1 - distance for convenience.
+--     `similarity` = 1 - distance for convenience. Search is exact (no ivfflat /
+--     hnsw index) at this scale; see the notes at each table.
 
 ------------------------------------------------------------
 -- Extension
@@ -34,10 +35,15 @@ create table if not exists public.exercise_kb (
   unique (slug)
 );
 
--- Approximate-NN index. ivfflat needs ANALYZE + a populated table to be useful;
--- lists≈sqrt(rows). For a small curated KB this is plenty; swap to hnsw if you grow it.
-create index if not exists exercise_kb_embedding_idx
-  on public.exercise_kb using ivfflat (embedding vector_cosine_ops) with (lists = 100);
+-- No approximate-NN index on purpose: retrieval is an EXACT cosine scan.
+-- The curated KB is ~15 rows. An ivfflat index with lists = 100 on that few rows
+-- leaves most lists empty, and at the default ivfflat.probes = 1 a query searches a
+-- single list, so it can return fewer than k rows or miss the best match. A
+-- sequential scan of a few hundred rows is both exact and faster. If the KB grows
+-- past ~10k rows, add an HNSW index (no training step, high recall):
+--   create index if not exists exercise_kb_embedding_hnsw_idx
+--     on public.exercise_kb using hnsw (embedding vector_cosine_ops);
+-- Deployments that ran an older copy of this file: db/migrations/001_rag_exact_vector_search.sql.
 create index if not exists exercise_kb_muscle_idx on public.exercise_kb (muscle_group);
 
 ------------------------------------------------------------
@@ -57,8 +63,10 @@ create table if not exists public.user_memories (
   unique (owner_id, dedupe_key)
 );
 
-create index if not exists user_memories_embedding_idx
-  on public.user_memories using ivfflat (embedding vector_cosine_ops) with (lists = 100);
+-- Also exact search, no vector index: RLS limits every query to the caller's own
+-- rows (a few dozen weekly summaries), which this owner-leading index finds
+-- directly. An ANN index would rank across ALL users first and apply the owner
+-- filter afterwards, so it could return fewer than k of the caller's memories.
 create index if not exists user_memories_owner_kind_idx
   on public.user_memories (owner_id, kind, created_at desc);
 

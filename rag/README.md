@@ -61,6 +61,13 @@ needs their Supabase access token, nothing privileged):
 USER_ACCESS_TOKEN="<supabase access token>" python -m ingest.user_history
 ```
 
+This script is **the** way user history gets into `user_memories`: one summary per
+ISO week (top set per exercise, habit totals, latest body metrics), upserted under a
+stable `dedupe_key` so re-running refreshes rather than duplicates. Re-run it (by
+hand or from a scheduled job holding a fresh user token) to keep history current.
+The app itself never writes memories, and the private habit (intimacy) is never
+read. Why: [`docs/RAG.md`](../docs/RAG.md#how-user-history-gets-in).
+
 ## Run
 
 ```bash
@@ -84,10 +91,15 @@ top of `db/entitlements.sql`).
 | Method | Path                   | Auth                  | Purpose                                             |
 | ------ | ---------------------- | --------------------- | --------------------------------------------------- |
 | GET    | `/health`              | none                  | Liveness.                                           |
-| POST   | `/rag/coach`           | user JWT + Pro        | Retrieve → grounded answer `{ answer, sources }`.   |
+| POST   | `/rag/coach`           | user JWT + Pro        | Retrieve → grounded answer `{ answer, sources }`¹.  |
 | POST   | `/rag/retrieve`        | user JWT + Pro        | Retrieved context + prompt preview (no generation). |
-| POST   | `/rag/memories`        | user JWT + Pro        | Embed + upsert one user memory.                     |
+| POST   | `/rag/memories`        | user JWT + Pro        | Embed + upsert one ad-hoc memory (app doesn't use). |
 | POST   | `/webhooks/revenuecat` | shared webhook secret | Billing events → `user_entitlements` (see below).   |
+
+¹ Both system prompts carry the app's safety preamble (`app/safety.py`, kept
+byte-identical to `lib/safety.ts` by `tests/test_safety.py`). A query that signals
+self-harm gets crisis resources back (`model: "crisis-resources"`) with no retrieval
+and no Gemini call.
 
 ### RevenueCat webhook
 
@@ -148,7 +160,8 @@ rag/
 │   ├── gemini.py        # embeddings + generation (httpx)
 │   ├── supabase.py      # PostgREST RPC client that forwards the user JWT
 │   ├── retrieval.py     # embed → fan out to both stores → threshold filter
-│   ├── prompts.py       # system prompts + grounded-context assembly
+│   ├── prompts.py       # system prompts (+ safety preamble) + grounded-context assembly
+│   ├── safety.py        # safety preamble + crisis gate, mirrored from lib/safety.ts
 │   └── schemas.py       # request/response models
 ├── ingest/
 │   ├── exercise_kb.py   # seed the curated KB (service-role)
