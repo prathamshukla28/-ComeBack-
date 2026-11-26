@@ -2,16 +2,10 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { Button, Caption, Card, Eyebrow, H1, P, Screen } from '@/components/ui';
+import { proBenefits } from '@/lib/pro-benefits';
 import { useSubscription } from '@/lib/subscription';
 import { useTheme } from '@/lib/theme';
 import { notify } from '@/lib/notify';
-
-// Only list what Pro actually unlocks today (see docs/MONETIZATION.md).
-const BENEFITS = [
-  'AI Life Coach — it remembers you and grows with you',
-  'Fitness Guru grounded in a curated exercise library and your own history',
-  'Supports an independent, privacy-first app — your data stays yours',
-];
 
 function Benefit({ text }: { text: string }) {
   const { c, brand } = useTheme();
@@ -85,7 +79,7 @@ export function Paywall({
       <View style={{ height: 20 }} />
 
       <Card elevated>
-        {BENEFITS.map((b) => (
+        {proBenefits().map((b) => (
           <Benefit key={b} text={b} />
         ))}
       </Card>

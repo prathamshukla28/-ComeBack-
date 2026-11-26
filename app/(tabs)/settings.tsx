@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Linking, View } from 'react-native';
 import { Button, Card, H1, H2, Input, P, Screen } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
+import { proSummary } from '@/lib/pro-benefits';
 import { useSubscription } from '@/lib/subscription';
 import {
   clearAllReminders,
@@ -105,9 +106,7 @@ export default function Settings() {
       <Card elevated>
         <H2>{isPro ? 'ComeBack Pro ✓' : 'ComeBack Pro'}</H2>
         <P muted>
-          {isPro
-            ? 'Thanks for your support — every premium feature is unlocked.'
-            : 'Unlock the AI Life Coach, RAG-grounded Guru, full history, and unlimited habits.'}
+          {isPro ? 'Thanks for your support — every premium feature is unlocked.' : proSummary()}
         </P>
         <View style={{ height: 12 }} />
         {isPro ? (

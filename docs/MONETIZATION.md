@@ -6,14 +6,18 @@ receipts. Premium features are gated behind a single **`pro`** entitlement.
 
 ## What's gated
 
-| Free                         | ComeBack **Pro**                                   |
-| ---------------------------- | -------------------------------------------------- |
-| Habit + workout logging      | **AI Life Coach** (the `Coach` tab)                |
-| Fitness Guru (direct Gemini) | RAG-grounded Guru on your own history _(optional)_ |
-| Recent stats                 | Full history & progression _(optional)_            |
+| Free                                              | ComeBack **Pro**                                                                |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Habit + workout logging, unlimited                | **AI Life Coach** (the `Coach` tab)                                             |
+| All history, streaks and trends                   | RAG-grounded Guru on your own history — only when the RAG service is configured |
+| Fitness Guru (direct Gemini, on your own API key) |                                                                                 |
 
-The Coach tab is gated out of the box (`app/(tabs)/coach.tsx`), and the Guru tab
-uses the RAG service only for Pro users. To gate any other screen, read the flag:
+That is the whole list: nothing else is gated (no history limit, no habit limit).
+The paywall and the Settings upsell read their copy from `lib/pro-benefits.ts`, which
+drops the grounded-Guru line when `EXPO_PUBLIC_RAG_URL` is unset. The Coach tab is
+gated out of the box (`app/(tabs)/coach.tsx`), and the Guru tab uses the RAG service
+only for Pro users. To gate any other screen, read the flag (and add it to
+`lib/pro-benefits.ts`):
 
 ```ts
 import { useIsPro } from '@/lib/subscription';
