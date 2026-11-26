@@ -1,10 +1,11 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Button, Card, Empty, H1, Input, P, Screen } from '@/components/ui';
-import { habitCountToday, habitLast7Days, logHabit, undoLastHabit } from '@/lib/queries';
+import { habitCountToday, habitLast7Days, logHabitResilient, undoLastHabit } from '@/lib/queries';
 import { hasPin, pinLockAvailable, setPin, verifyPin } from '@/lib/pin';
+import { useAutoRelock } from '@/lib/privacy-lock';
 import { useTheme } from '@/lib/theme';
 import { notify } from '@/lib/notify';
 
@@ -14,6 +15,13 @@ export default function Intimacy() {
   const [needsPinSetup, setNeedsPinSetup] = useState(false);
   const [checking, setChecking] = useState(true);
   const lockAvailable = pinLockAvailable();
+
+  // Re-lock when the app leaves the foreground, and after a few minutes unlocked.
+  const relock = useCallback(() => {
+    setUnlocked(false);
+    setPinInput('');
+  }, []);
+  const autoRelock = useAutoRelock(unlocked, relock);
 
   useEffect(() => {
     if (!lockAvailable) return;
@@ -28,11 +36,13 @@ export default function Intimacy() {
         const hasHW = await LocalAuthentication.hasHardwareAsync();
         const enrolled = await LocalAuthentication.isEnrolledAsync();
         if (hasHW && enrolled) {
-          const res = await LocalAuthentication.authenticateAsync({
-            promptMessage: 'Unlock Intimacy',
-            disableDeviceFallback: false,
-            fallbackLabel: 'Use PIN',
-          });
+          const res = await autoRelock.authenticating(() =>
+            LocalAuthentication.authenticateAsync({
+              promptMessage: 'Unlock Intimacy',
+              disableDeviceFallback: false,
+              fallbackLabel: 'Use PIN',
+            }),
+          );
           if (res.success) {
             setUnlocked(true);
           }
@@ -44,7 +54,7 @@ export default function Intimacy() {
         setChecking(false);
       }
     })();
-  }, [lockAvailable]);
+  }, [lockAvailable, autoRelock]);
 
   const savePin = async () => {
     if (pinInput.length < 4) return notify('PIN too short', 'Use at least 4 digits.');
@@ -121,9 +131,9 @@ export default function Intimacy() {
           title="Unlock with FaceID"
           icon="faceid"
           onPress={async () => {
-            const res = await LocalAuthentication.authenticateAsync({
-              promptMessage: 'Unlock Intimacy',
-            });
+            const res = await autoRelock.authenticating(() =>
+              LocalAuthentication.authenticateAsync({ promptMessage: 'Unlock Intimacy' }),
+            );
             if (res.success) setUnlocked(true);
           }}
         />
@@ -156,7 +166,16 @@ function IntimacyContent() {
     queryFn: () => habitLast7Days('intimacy'),
   });
   const inv = () => qc.invalidateQueries({ queryKey: ['habit', 'intimacy'] });
-  const add = useMutation({ mutationFn: () => logHabit('intimacy', 1), onSuccess: inv });
+  // Same offline-safe path as the Habits tab: a tap on a flaky connection is queued
+  // on the device (lib/outbox.ts) and replayed with the same client id, never lost.
+  const add = useMutation({
+    mutationFn: () => logHabitResilient('intimacy', 1),
+    onSuccess: (res) => {
+      inv();
+      if (res.queued) notify('Saved offline', 'It will sync when you reconnect.');
+    },
+    onError: (e: any) => notify('Could not log', e?.message ?? 'Something went wrong'),
+  });
   const undo = useMutation({
     mutationFn: () => undoLastHabit('intimacy'),
     onSuccess: (ok) => {
@@ -217,7 +236,7 @@ function IntimacyContent() {
       <Empty
         icon="lock.shield.fill"
         title="Your data, your device"
-        subtitle="This tab locks again when you leave the app."
+        subtitle="This tab locks again when you leave the app, and after 5 minutes."
       />
     </Screen>
   );

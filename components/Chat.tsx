@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { sendMessage, type ChatTurn } from '@/lib/gemini';
 import { clearThread, loadThread, saveMessage, type ChatThread } from '@/lib/queries';
-import { CRISIS_RESOURCES, detectCrisis } from '@/lib/safety';
+import { CRISIS_RESOURCES, detectCrisis, withSafety } from '@/lib/safety';
 import { GEMINI_KEY_UNAVAILABLE, GEMINI_KEY_WEB_NOTICE } from '@/lib/secureStore';
 import { useTheme } from '@/lib/theme';
 import { tabBarHeight } from '@/constants/Layout';
@@ -71,9 +71,11 @@ export function Chat({ config }: { config: ChatConfig }) {
           role: m.role === 'user' ? 'user' : 'model',
           text: m.content,
         }));
+        // Every direct-Gemini prompt carries the safety rules, whatever the screen
+        // passed; `ask` routes (RAG) get them server-side (rag/app/prompts.py).
         const reply = config.ask
           ? await config.ask(text, turns)
-          : await sendMessage(await config.systemPrompt(), turns, text);
+          : await sendMessage(withSafety(await config.systemPrompt()), turns, text);
         await saveMessage(config.thread, 'model', reply);
         // fire-and-forget post-reply hook
         if (config.onAfterReply) {

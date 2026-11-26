@@ -8,7 +8,8 @@ import { localDay, shiftDay, startOfLocalDay } from './streaks';
  *
  * It implements just the slice of the PostgREST query builder that lib/queries.ts
  * and lib/outbox.ts use (select / insert / upsert / update / delete, eq / neq / gte,
- * order, limit, single / maybeSingle) over plain arrays, and a local demo session
+ * order, limit, single / maybeSingle, and one-to-many `child!inner(cols)` embeds)
+ * over plain arrays, and a local demo session
  * for lib/auth.tsx. The real screens and the real data-access code run unchanged
  * on top of it; nothing is sent over the network and nothing persists across a
  * reload. Every row below is SAMPLE DATA, seeded relative to "today".
@@ -39,8 +40,41 @@ function compare(a: unknown, b: unknown): number {
   return String(a ?? '').localeCompare(String(b ?? ''));
 }
 
+/** Split a select list on top-level commas (commas inside an embed's parens stay). */
+function splitColumns(columns: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let cur = '';
+  for (const ch of columns) {
+    if (ch === ',' && depth === 0) {
+      out.push(cur.trim());
+      cur = '';
+      continue;
+    }
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    cur += ch;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+
+/** A PostgREST embed such as `workout_sets!inner(id)`. */
+interface Embed {
+  table: string;
+  inner: boolean;
+  columns: string;
+}
+
+const EMBED_RE = /^(\w+)(!inner)?\((.*)\)$/;
+
+function parseEmbed(col: string): Embed | null {
+  const m = EMBED_RE.exec(col);
+  return m ? { table: m[1], inner: !!m[2], columns: m[3] } : null;
+}
+
 function project(row: Row, columns: string): Row {
-  const cols = columns.split(',').map((c) => c.trim());
+  const cols = splitColumns(columns).filter((c) => !parseEmbed(c));
   if (cols.includes('*')) return { ...row };
   return Object.fromEntries(cols.map((c) => [c, row[c]]));
 }
@@ -216,6 +250,14 @@ export class DemoQuery implements PromiseLike<DemoResult> {
     }
 
     let rows = table.filter((r) => this.matches(r));
+    // One-to-many embeds: child rows reference this table via `<singular>_id`
+    // (workouts → workout_sets.workout_id). `!inner` drops parents with no children.
+    const embeds = splitColumns(this.columns)
+      .map(parseEmbed)
+      .filter((e): e is Embed => !!e);
+    const fk = `${this.table.replace(/s$/, '')}_id`;
+    const childrenOf = (e: Embed, r: Row) => this.db.rows(e.table).filter((c) => c[fk] === r.id);
+    for (const e of embeds) if (e.inner) rows = rows.filter((r) => childrenOf(e, r).length > 0);
     if (this.orders.length) {
       rows = [...rows].sort((a, b) => {
         for (const { col, ascending } of this.orders) {
@@ -226,7 +268,16 @@ export class DemoQuery implements PromiseLike<DemoResult> {
       });
     }
     if (this.max !== undefined) rows = rows.slice(0, this.max);
-    return out(rows);
+    if (!embeds.length) return out(rows);
+    return {
+      data: rows.map((r) => ({
+        ...project(r, this.columns),
+        ...Object.fromEntries(
+          embeds.map((e) => [e.table, childrenOf(e, r).map((c) => project(c, e.columns))]),
+        ),
+      })),
+      error: null,
+    };
   }
 }
 
@@ -326,6 +377,12 @@ export function demoSeed(now: Date = new Date()): Record<string, Row[]> {
           ? earlierToday(50 - set_index * 4 - exercise_name.length)
           : at(now, daysAgo, 8),
     });
+  // At least one set on every workout day, so each counts toward the streak.
+  set(13, 'Barbell Row', 1, 65, 8, 2);
+  set(11, 'Incline Dumbbell Press', 1, 26, 10, 2);
+  set(8, 'Barbell Curl', 1, 30, 10, 2);
+  set(6, 'Pull-up', 1, 10, 6, 2);
+  set(1, 'Romanian Deadlift', 1, 90, 8, 2);
   set(10, 'Bench Press', 1, 77.5, 5, 2);
   set(7, 'Bench Press', 1, 80, 5, 2);
   set(3, 'Bench Press', 1, 80, 6, 1);

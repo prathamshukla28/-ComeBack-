@@ -1,3 +1,4 @@
+import { AppState, type AppStateStatus } from 'react-native';
 import {
   addOp,
   enqueueHabit,
@@ -5,11 +6,17 @@ import {
   isDuplicateKey,
   isNetworkError,
   isUuid,
+  latestPending,
   newHabitId,
   parseQueue,
   pendingCount,
   removeOp,
+  replayOutbox,
+  REPLAY_INTERVAL_MS,
+  startOutboxReplay,
+  takeLatestPending,
   toRow,
+  withReplayPaused,
   type PendingHabit,
 } from '../outbox';
 
@@ -179,5 +186,193 @@ describe('persistence + flush', () => {
     const sent = mockInsert.mock.calls[0][0] as Record<string, unknown>;
     expect(sent).not.toHaveProperty('id');
     expect(sent.kind).toBe('cigarette');
+  });
+});
+
+/** A promise plus its resolver, to hold an insert "in flight". */
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((r) => (resolve = r));
+  return { promise, resolve };
+}
+
+/** Let pending promise callbacks (AsyncStorage, inserts) run. */
+const settle = () => new Promise((r) => setImmediate(r));
+
+describe('replay concurrency', () => {
+  it('a tap queued while a replay is in flight is kept, not overwritten', async () => {
+    await enqueueHabit(op('1'));
+    const insert = deferred<{ error: null }>();
+    mockInsert.mockReturnValueOnce(insert.promise);
+    const flushing = flushOutbox();
+    await settle(); // op 1's insert is now in flight
+
+    await enqueueHabit(op('2'));
+    insert.resolve({ error: null });
+
+    expect(await flushing).toBe(1);
+    expect(await pendingCount()).toBe(1); // op 2 survived the replay's save
+  });
+
+  it('is single-flight: overlapping replays insert each op once', async () => {
+    await enqueueHabit(uuidOp());
+    mockInsert.mockResolvedValue({ error: null });
+    const [a, b] = await Promise.all([flushOutbox(), flushOutbox()]);
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(a).toBe(1);
+    expect(b).toBe(1); // the second call joined the first
+  });
+
+  it('an empty queue replays without touching the network', async () => {
+    expect(await flushOutbox()).toBe(0);
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it('withReplayPaused waits for an in-flight replay and starts none meanwhile', async () => {
+    await enqueueHabit(op('1'));
+    const insert = deferred<{ error: null }>();
+    mockInsert.mockReturnValueOnce(insert.promise);
+    const flushing = flushOutbox();
+    await settle();
+
+    let ranAfterReplay = false;
+    const paused = withReplayPaused(async () => {
+      ranAfterReplay = (await pendingCount()) === 0;
+      await enqueueHabit(op('2'));
+      expect(await flushOutbox()).toBe(0); // held off
+      return 'done';
+    });
+    insert.resolve({ error: null });
+    await flushing;
+    expect(await paused).toBe('done');
+    expect(ranAfterReplay).toBe(true);
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(await pendingCount()).toBe(1);
+  });
+});
+
+describe('undo of a queued tap', () => {
+  const at = (iso: string, kind: PendingHabit['kind'] = 'intimacy', id = iso): PendingHabit => ({
+    id,
+    kind,
+    amount: 1,
+    occurred_at: iso,
+  });
+
+  it('latestPending picks the newest op of the kind, not older than the server row', () => {
+    const q = [
+      at('2026-10-25T10:00:00.000Z'),
+      at('2026-10-25T12:00:00.000Z', 'cigarette'),
+      at('2026-10-25T11:00:00.000Z'),
+    ];
+    expect(latestPending(q, 'intimacy')?.occurred_at).toBe('2026-10-25T11:00:00.000Z');
+    expect(latestPending(q, 'intimacy', '2026-10-25T11:30:00.000Z')).toBeUndefined();
+    expect(latestPending(q, 'alcohol')).toBeUndefined();
+  });
+
+  it('takeLatestPending removes exactly that op from storage', async () => {
+    await enqueueHabit(at('2026-10-25T10:00:00.000Z'));
+    await enqueueHabit(at('2026-10-25T11:00:00.000Z'));
+    const taken = await takeLatestPending('intimacy');
+    expect(taken?.occurred_at).toBe('2026-10-25T11:00:00.000Z');
+    expect(await pendingCount()).toBe(1);
+    expect(await takeLatestPending('alcohol')).toBeUndefined();
+  });
+});
+
+describe('reconnect triggers', () => {
+  let listeners: ((s: AppStateStatus) => void)[];
+  let remove: jest.Mock;
+  const setAppState = (s: AppStateStatus) => {
+    Object.defineProperty(AppState, 'currentState', { value: s, configurable: true });
+    listeners.forEach((l) => l(s));
+  };
+
+  beforeEach(() => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    listeners = [];
+    remove = jest.fn();
+    jest.spyOn(AppState, 'addEventListener').mockImplementation((_t, fn) => {
+      listeners.push(fn as (s: AppStateStatus) => void);
+      return { remove } as unknown as ReturnType<typeof AppState.addEventListener>;
+    });
+    Object.defineProperty(AppState, 'currentState', { value: 'active', configurable: true });
+    mockInsert.mockResolvedValue({ error: null });
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it('replays immediately (app start / sign-in) and reports what synced', async () => {
+    await enqueueHabit(op('1'));
+    const onSynced = jest.fn();
+    const stop = startOutboxReplay(onSynced);
+    await settle();
+    await settle();
+    expect(onSynced).toHaveBeenCalledWith(1);
+    expect(await pendingCount()).toBe(0);
+    stop();
+  });
+
+  it('replays when the app returns to the foreground', async () => {
+    const onSynced = jest.fn();
+    const stop = startOutboxReplay(onSynced);
+    await settle();
+    await enqueueHabit(op('1')); // queued offline while backgrounded
+    setAppState('background');
+    await settle();
+    expect(mockInsert).not.toHaveBeenCalled();
+    setAppState('active');
+    await settle();
+    await settle();
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(onSynced).toHaveBeenCalledWith(1);
+    stop();
+  });
+
+  it('retries periodically while foregrounded, but not in the background', async () => {
+    const stop = startOutboxReplay(jest.fn());
+    await settle();
+    await enqueueHabit(op('1'));
+
+    Object.defineProperty(AppState, 'currentState', { value: 'background', configurable: true });
+    jest.advanceTimersByTime(REPLAY_INTERVAL_MS);
+    await settle();
+    expect(mockInsert).not.toHaveBeenCalled();
+
+    Object.defineProperty(AppState, 'currentState', { value: 'active', configurable: true });
+    jest.advanceTimersByTime(REPLAY_INTERVAL_MS);
+    await settle();
+    await settle();
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it('stop() removes the AppState listener and the timer', async () => {
+    const stop = startOutboxReplay(jest.fn());
+    await settle();
+    stop();
+    expect(remove).toHaveBeenCalled();
+    await enqueueHabit(op('1'));
+    jest.advanceTimersByTime(REPLAY_INTERVAL_MS * 3);
+    await settle();
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it('replayOutbox never throws and tells the active subscriber', async () => {
+    const onSynced = jest.fn();
+    const stop = startOutboxReplay(onSynced);
+    await settle();
+    await enqueueHabit(op('1'));
+    expect(await replayOutbox()).toBe(1);
+    expect(onSynced).toHaveBeenCalledWith(1);
+    stop();
+
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const AsyncStorage = jest.requireMock('@react-native-async-storage/async-storage').default;
+    AsyncStorage.getItem.mockRejectedValueOnce(new Error('disk'));
+    await expect(replayOutbox()).resolves.toBe(0);
+    expect(warn).toHaveBeenCalled();
   });
 });

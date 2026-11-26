@@ -1,8 +1,12 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { argsOf, db } from '../../test-utils/supabase-mock';
+import { enqueueHabit, pendingCount } from '../outbox';
 import {
   cleanStreak,
   cleanStreakStats,
+  ensureTodayWorkout,
   estimateOneRepMax,
+  findTodayWorkout,
   habitCountToday,
   isNewPR,
   isUniqueViolation,
@@ -12,15 +16,23 @@ import {
   loadThread,
   LOG_SET_MAX_ATTEMPTS,
   logHabit,
+  logHabitResilient,
   logSet,
   NEVER_LOGGED,
+  PRIVATE_HABIT,
   undoLastHabit,
   upsertProfile,
+  workoutDailyCounts,
+  workoutStreak,
 } from '../queries';
 
 jest.mock('../supabase', () => require('../../test-utils/supabase-mock').supabaseModule);
+jest.mock('expo-crypto', () => ({ randomUUID: () => require('crypto').randomUUID() }));
 
-beforeEach(() => db.reset());
+beforeEach(async () => {
+  db.reset();
+  await AsyncStorage.clear();
+});
 
 /* ------------------------------------------------------------------ */
 /* Habits                                                              */
@@ -74,6 +86,72 @@ describe('habits', () => {
   it('undoLastHabit surfaces a delete error', async () => {
     db.queue('habit_logs', { data: [{ id: 'h9' }] }, { error: { message: 'denied' } });
     await expect(undoLastHabit('alcohol')).rejects.toEqual({ message: 'denied' });
+  });
+
+  it('undoLastHabit takes back a newer tap still queued offline, not the older synced row', async () => {
+    await enqueueHabit({
+      id: '7d5f3b2e-1a4c-4e8f-9b6d-2c1a0e9f8d7b',
+      kind: 'intimacy',
+      amount: 1,
+      occurred_at: '2026-10-25T12:00:00.000Z',
+    });
+    db.queue('habit_logs', { data: [{ id: 'h-old', occurred_at: '2026-10-25T09:00:00.000Z' }] });
+    await expect(undoLastHabit('intimacy')).resolves.toBe(true);
+    expect(await pendingCount()).toBe(0);
+    // the synced row is untouched: only the lookup ran, no delete
+    expect(db.callsTo('habit_logs')).toHaveLength(1);
+  });
+
+  it('undoLastHabit deletes the server row when it is newer than anything queued', async () => {
+    await enqueueHabit({
+      id: '7d5f3b2e-1a4c-4e8f-9b6d-2c1a0e9f8d7b',
+      kind: 'alcohol',
+      amount: 1,
+      occurred_at: '2026-10-25T08:00:00.000Z',
+    });
+    db.queue(
+      'habit_logs',
+      { data: [{ id: 'h-new', occurred_at: '2026-10-25T09:00:00.000Z' }] },
+      { data: null },
+    );
+    await expect(undoLastHabit('alcohol')).resolves.toBe(true);
+    expect(argsOf(db.callsTo('habit_logs')[1], 'eq')).toEqual(['id', 'h-new']);
+    expect(await pendingCount()).toBe(1);
+  });
+});
+
+describe('logHabitResilient', () => {
+  it('queues a network failure with the same id it tried live (idempotent replay)', async () => {
+    db.queue('habit_logs', { error: new Error('Network request failed') });
+    await expect(logHabitResilient('intimacy')).resolves.toEqual({ queued: true });
+    const sentId = (argsOf(db.callsTo('habit_logs')[0], 'insert')?.[0] as { id: string }).id;
+    const stored = JSON.parse((await AsyncStorage.getItem('comeback.outbox.habits.v1')) ?? '[]');
+    expect(stored).toEqual([expect.objectContaining({ id: sentId, kind: 'intimacy', amount: 1 })]);
+  });
+
+  it('throws a genuine server rejection instead of queueing it', async () => {
+    db.queue('habit_logs', { error: { message: 'new row violates row-level security policy' } });
+    await expect(logHabitResilient('alcohol')).rejects.toEqual({
+      message: 'new row violates row-level security policy',
+    });
+    expect(await pendingCount()).toBe(0);
+  });
+
+  it('a live write that succeeds replays anything queued earlier (the connection is back)', async () => {
+    await enqueueHabit({
+      id: '7d5f3b2e-1a4c-4e8f-9b6d-2c1a0e9f8d7b',
+      kind: 'cigarette',
+      amount: 1,
+      occurred_at: '2026-10-25T08:00:00.000Z',
+    });
+    db.queue('habit_logs', { data: { id: 'live' } }, { error: null });
+    await expect(logHabitResilient('cigarette')).resolves.toEqual({ queued: false });
+    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => setImmediate(r));
+    expect(await pendingCount()).toBe(0);
+    expect(argsOf(db.callsTo('habit_logs')[1], 'insert')?.[0]).toMatchObject({
+      id: '7d5f3b2e-1a4c-4e8f-9b6d-2c1a0e9f8d7b',
+    });
   });
 });
 
@@ -207,6 +285,57 @@ describe('last30dContext', () => {
     const ctx = await last30dContext();
     expect(ctx).toContain('Workouts (0): none');
     expect(ctx).toContain('Latest body: no data');
+  });
+
+  it('never fetches or mentions the private (intimacy) habit', async () => {
+    db.queue('habit_logs', {
+      data: [
+        { kind: 'cigarette', amount: 1 },
+        { kind: 'intimacy', amount: 4 },
+      ],
+    });
+    const ctx = await last30dContext();
+    // Filtered at the query, so the rows are never even downloaded for the prompt…
+    expect(PRIVATE_HABIT).toBe('intimacy');
+    expect(argsOf(db.callsTo('habit_logs')[0], 'neq')).toEqual(['kind', 'intimacy']);
+    // …and dropped again client-side if a row slips through.
+    expect(ctx).not.toMatch(/intimacy/i);
+    expect(ctx).toContain('Cigarettes total: 1');
+  });
+
+  it('lists only workouts that have at least one logged set', async () => {
+    await last30dContext();
+    expect(argsOf(db.callsTo('workouts')[0], 'select')?.[0]).toMatch(/workout_sets!inner\(/);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Workouts: an empty workout row is not a training day                */
+/* ------------------------------------------------------------------ */
+
+describe('workout days', () => {
+  it('workoutStreak asks only for workouts with at least one set (inner embed)', async () => {
+    await workoutStreak();
+    expect(argsOf(db.callsTo('workouts')[0], 'select')?.[0]).toMatch(/workout_sets!inner\(/);
+  });
+
+  it('workoutDailyCounts counts only workouts with at least one set', async () => {
+    await workoutDailyCounts(7);
+    expect(argsOf(db.callsTo('workouts')[0], 'select')?.[0]).toMatch(/workout_sets!inner\(/);
+  });
+
+  it('findTodayWorkout is read-only: no row today means null, never an insert', async () => {
+    db.queue('workouts', { data: [] });
+    await expect(findTodayWorkout()).resolves.toBeNull();
+    const calls = db.callsTo('workouts');
+    expect(calls).toHaveLength(1);
+    expect(argsOf(calls[0], 'insert')).toBeUndefined();
+  });
+
+  it('ensureTodayWorkout still creates the row when a set is being logged', async () => {
+    db.queue('workouts', { data: [] }, { data: { id: 'w-new' } });
+    await expect(ensureTodayWorkout()).resolves.toBe('w-new');
+    expect(argsOf(db.callsTo('workouts')[1], 'insert')).toBeDefined();
   });
 });
 

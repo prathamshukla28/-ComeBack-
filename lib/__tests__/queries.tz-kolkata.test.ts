@@ -151,7 +151,8 @@ describe('last30dContext in Asia/Kolkata', () => {
     expect(ctx).toContain('Squat: 100kg x 5 (RIR 2)');
     expect(ctx).toContain('Cigarettes total: 3');
     expect(ctx).toContain('Alcohol units total: 3');
-    expect(ctx).toContain('Intimacy count: 1');
+    // The private habit never reaches the model, even if a row slips through.
+    expect(ctx).not.toMatch(/intimacy/i);
     expect(ctx).toContain('Latest body: 81.5kg, 15% bf (2026-11-09)');
 
     const body = db.callsTo('body_metrics')[0];

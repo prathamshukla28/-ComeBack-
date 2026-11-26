@@ -26,15 +26,15 @@ A privacy-first habit and workout tracker with an AI coach — built with Expo, 
 
 - 📊 **Daily dashboard** — one-glance view of today's sets, streaks, and habits
 - 🏋️ **Workout tracker** — log sets, reps, weights; visualize progression
-- 🧘 **Habit journal** — track cigarettes, alcohol, intimacy with clean-streak counters
+- 🧘 **Habit journal** — track cigarettes and alcohol with clean-streak counters; intimacy has its own locked tab and never appears on Today or in anything sent to the AI
 - 🔁 **Relapse-aware streaks** — a lapse never cold-resets you to zero; it reframes the broken run against your personal best and nudges you to rebuild
 - 📈 **Trends** — week-over-week deltas and sparklines for habits and workouts, colour-coded toward your goal
-- 📡 **Offline-safe logging** — a tap on a flaky connection is persisted to a durable outbox and replayed on reconnect; logs are never lost
+- 📡 **Offline-safe logging** — a habit tap on a flaky connection (private tab included) is persisted to a durable on-device outbox and replayed when the app starts or you sign in, whenever it returns to the foreground, every 30 s while it is in the foreground, and right after the next successful write; each tap keeps one id, so a replay never logs it twice. (No OS network-change listener: that needs a native module.)
 - 🛟 **Coach safety net** — self-harm signals short-circuit the LLM and surface vetted crisis resources (988 / Samaritans / findahelpline) instead
 - 🧠 **Two AI chats** — a **Fitness Guru** (optionally RAG-grounded in a curated exercise KB + your own history via pgvector) and a Pro **Life Coach** with long-term memory, both on Google Gemini
 - 🧷 **Injection-resistant coach memory** — facts the model extracts are schema-validated, instruction-shaped content is dropped, and memories re-enter prompts only as quoted, delimited data
 - 💳 **ComeBack Pro** — RevenueCat paywall on the client, **enforced server-side** for anything that spends the operator's API key (RLS-protected entitlements fed by a RevenueCat webhook)
-- 🔒 **Biometric lock** — Face ID / Touch ID gate for sensitive tabs, with a salted-hashed, rate-limited PIN fallback (the tab stays locked on web, which has no keychain)
+- 🔒 **Biometric lock** — Face ID / Touch ID gate for the private tab, with a salted-hashed, rate-limited PIN fallback; it re-locks the moment the app leaves the foreground and after 5 minutes unlocked (and stays locked on web, which has no keychain)
 - 🔔 **Local notifications** — gentle nudges when your streaks are on the line
 - 🎨 **Adaptive theming** — polished light and dark palettes
 - 🎉 **Delightful micro-interactions** — haptics, animated numbers, confetti wins
@@ -58,7 +58,7 @@ A privacy-first habit and workout tracker with an AI coach — built with Expo, 
 
 1. Follow **Quick Start** below (Supabase project + `db/schema.sql`, `.env`).
 2. Sign in, open **Settings**, and paste your own [Gemini API key](https://aistudio.google.com/app/apikey) (stored in the OS keychain, never in the bundle).
-3. Log a few sets and habit taps — the Today, Habits and Trends screens fill in, and logging keeps working offline.
+3. Log a few sets and habit taps — the Today, Habits and Trends screens fill in, and habit taps keep working offline.
 4. **Life Coach (Pro)** — in a dev build, unlock it without a purchase:
 
    ```bash
@@ -140,6 +140,9 @@ Full walk-through with Supabase provisioning and schema import lives in [`docs/S
 │   ├── streaks.ts          # Pure streak + local-day math
 │   ├── coach-memory.ts     # Memory validation + quoting (prompt-injection defence)
 │   ├── coach-prompt.ts     # Life Coach prompt assembly + memory extraction
+│   ├── guru-prompt.ts      # Fitness Guru prompt assembly + grounded (RAG) ask
+│   ├── privacy-lock.ts     # Private-tab auto re-lock (background / timeout)
+│   ├── pro-benefits.ts     # What Pro unlocks (paywall + Settings copy)
 │   ├── outbox.ts           # Durable offline queue for habit taps
 │   ├── safety.ts           # Crisis detection + safety preamble
 │   ├── purchases.ts        # RevenueCat wrapper
@@ -148,10 +151,11 @@ Full walk-through with Supabase provisioning and schema import lives in [`docs/S
 │   ├── rag.ts / gemini.ts  # AI clients
 │   ├── pin.ts, sessionStorage.ts, secureStore.ts  # on-device secrets
 │   └── env.ts              # zod-validated env
-├── db/                     # schema.sql, rag.sql (pgvector), entitlements.sql (+ RLS integration test)
+├── db/                     # schema.sql, rag.sql (pgvector), entitlements.sql, migrations/ (+ RLS integration test)
 ├── rag/                    # Python FastAPI RAG service (auth → rate limit → Pro → Gemini)
 ├── test-utils/             # Supabase query-builder mock, time-zone-pinning Jest env
-├── docs/                   # SETUP, RAG, MONETIZATION
+├── docs/                   # SETUP (incl. EAS builds), RAG, MONETIZATION
+├── eas.json                # EAS Build profiles: development, preview (Android APK), production
 └── .github/                # CI, CodeQL, Dependabot, release-please, EAS preview
 ```
 
@@ -180,14 +184,14 @@ Every push and PR runs through:
 - ✅ **TypeScript strict** — `tsc --noEmit` must be error-free
 - ✅ **ESLint** (`eslint-config-expo` + Prettier compatibility) — `--max-warnings=0`
 - ✅ **Prettier** formatting check
-- ✅ **Jest** — **296 tests** across `lib/` logic (`queries`, `streaks`, `coach-memory`, `coach-prompt`, `safety`, `outbox`, `pin`, `purchases`, `subscription`, `demo`, `demo-data`, `notify`, `secureStore`, `rag`, `gemini`, `env`, `insights`, `sessionStorage`), `components/` UI, and the RLS/entitlement policy shape in `db/*.sql`. Day-bucketing and streak edge cases near midnight run with the worker's real time zone pinned to **Asia/Kolkata** and **America/Los_Angeles** (`test-utils/timezone-env.js`). Coverage is ratcheted per layer (`lib/` ≥ 75%) and uploaded to Codecov
+- ✅ **Jest** — **352 tests** across `lib/` logic (`queries`, `streaks`, `coach-memory`, `coach-prompt`, `guru-prompt`, `safety`, `outbox`, `pro-benefits`, `pin`, `purchases`, `subscription`, `demo`, `demo-data`, `notify`, `secureStore`, `rag`, `gemini`, `env`, `insights`, `sessionStorage`), `components/` UI (private-tab lock and re-lock, dashboard privacy, chat safety, Pro copy), the RLS/entitlement policy and vector-index shape in `db/*.sql`, and `eas.json`. Day-bucketing and streak edge cases near midnight run with the worker's real time zone pinned to **Asia/Kolkata** and **America/Los_Angeles** (`test-utils/timezone-env.js`). Coverage is ratcheted per layer (`lib/` ≥ 84%) and uploaded to Codecov
 - ✅ **RLS integration test** (opt-in, `npm run test:rls`) — two real users against a local Supabase stack: no cross-user reads/writes, no self-granted Pro, duplicate set numbers rejected. Skipped automatically when no stack is configured
-- ✅ **pytest** — the `rag/` service (60 tests, all network mocked): token verification before any Gemini spend, per-user rate limiting, server-side Pro enforcement, the RevenueCat webhook, and the user-JWT isolation contract
+- ✅ **pytest** — the `rag/` service (80 tests, all network mocked): token verification before any Gemini spend, per-user rate limiting, server-side Pro enforcement, the RevenueCat webhook, the user-JWT isolation contract, the safety preamble and crisis gate (byte-for-byte parity with `lib/safety.ts`), and the weekly user-history summaries (correct top sets, never the private habit)
 - ✅ **markdownlint-cli2** — docs quality
 - ✅ **CodeQL** security scanning (JavaScript/TypeScript **and** Python, `security-and-quality` query set)
 - ✅ **Dependabot** — grouped weekly updates for npm, pip (`rag/`), and GitHub Actions; actions are pinned to commit SHAs
 - ✅ **release-please** — automated CHANGELOG + version bumps from Conventional Commits
-- ✅ **EAS Preview** (opt-in) — automated iOS/Android builds on PRs when `EXPO_TOKEN` is configured
+- ✅ **EAS Preview** (opt-in) — automated iOS/Android builds on PRs when `EXPO_TOKEN` is configured, using the `preview` profile in [`eas.json`](./eas.json) (setup: [`docs/SETUP.md`](./docs/SETUP.md#building-installable-apps-with-eas-optional))
 
 Locally, Husky wires the same guardrails into:
 

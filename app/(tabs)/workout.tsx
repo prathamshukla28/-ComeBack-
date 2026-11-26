@@ -7,6 +7,7 @@ import { heavy, success } from '@/lib/haptics';
 import {
   deleteSet,
   ensureTodayWorkout,
+  findTodayWorkout,
   isNewPR,
   listExercises,
   logSet,
@@ -22,9 +23,11 @@ export default function Workout() {
   const { c, brand } = useTheme();
   const qc = useQueryClient();
   // Keyed by local day so a screen left open past midnight rolls over to a new workout.
+  // Read-only: the workout row is created with the first set, so merely opening this
+  // tab never leaves an empty workout behind.
   const workoutId = useQuery({
     queryKey: ['todayWorkout', localDay(new Date())],
-    queryFn: ensureTodayWorkout,
+    queryFn: () => findTodayWorkout(),
   });
   const exercises = useQuery({ queryKey: ['exercises'], queryFn: listExercises });
   const sets = useQuery({
@@ -42,12 +45,13 @@ export default function Workout() {
 
   const add = useMutation({
     mutationFn: async () => {
-      if (!workoutId.data || !picked) throw new Error('Pick an exercise first');
+      if (!picked) throw new Error('Pick an exercise first');
       const w = parseFloat(weight);
       const r = parseInt(reps, 10);
       if (isNaN(w) || isNaN(r)) throw new Error('Enter weight (kg) and reps');
+      const id = workoutId.data ?? (await ensureTodayWorkout());
       const saved = await logSet({
-        workoutId: workoutId.data,
+        workoutId: id,
         exerciseId: picked.id,
         exerciseName: picked.name,
         weightKg: w,
@@ -61,6 +65,7 @@ export default function Workout() {
       setWeight('');
       setReps('');
       setRir('');
+      qc.invalidateQueries({ queryKey: ['todayWorkout'] });
       qc.invalidateQueries({ queryKey: ['sets'] });
       qc.invalidateQueries({ queryKey: ['workoutStreak'] });
       if (result?.pr) {
@@ -76,7 +81,10 @@ export default function Workout() {
 
   const del = useMutation({
     mutationFn: (id: string) => deleteSet(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['sets'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sets'] });
+      qc.invalidateQueries({ queryKey: ['workoutStreak'] });
+    },
   });
 
   const grouped = useMemo(() => {

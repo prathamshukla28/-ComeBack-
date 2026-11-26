@@ -12,6 +12,7 @@ import { EnvBanner } from '@/components/EnvBanner';
 import { useColorScheme } from '@/components/useColorScheme';
 import LoginScreen from './login';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { startOutboxReplay } from '@/lib/outbox';
 import { SubscriptionProvider } from '@/lib/subscription';
 
 export { ErrorBoundary } from 'expo-router';
@@ -51,15 +52,11 @@ function RootLayoutNav() {
   const scheme = useColorScheme();
   const { session, loading } = useAuth();
 
-  // Replay any habit logs captured offline once we're signed in.
+  // Replay habit logs captured offline once signed in: now, on every return to the
+  // foreground, and periodically while foregrounded (lib/outbox.ts).
   useEffect(() => {
     if (!session) return;
-    import('@/lib/outbox')
-      .then((m) => m.flushOutbox())
-      .then((n) => {
-        if (n > 0) queryClient.invalidateQueries({ queryKey: ['habit'] });
-      })
-      .catch((e) => console.warn('[ComeBack] outbox flush failed', e));
+    return startOutboxReplay(() => queryClient.invalidateQueries({ queryKey: ['habit'] }));
   }, [session]);
 
   return (

@@ -69,6 +69,18 @@ describe('buildCoachSystemPrompt', () => {
     expect(prompt).toContain('--- Last 30 days ---');
   });
 
+  it('never sends the private (intimacy) habit to the model', async () => {
+    db.queue('habit_logs', {
+      data: [
+        { kind: 'alcohol', amount: 2 },
+        { kind: 'intimacy', amount: 3 },
+      ],
+    });
+    const prompt = await buildCoachSystemPrompt();
+    expect(prompt).toContain('Alcohol units total: 2');
+    expect(prompt).not.toMatch(/intimacy/i);
+  });
+
   it('omits the profile and memory blocks when there is nothing to show', async () => {
     db.queue('user_profile', { data: null });
     const prompt = await buildCoachSystemPrompt();

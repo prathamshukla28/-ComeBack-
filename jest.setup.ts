@@ -18,3 +18,18 @@ jest.mock('expo-notifications', () => ({
   requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
   getPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
 }));
+
+// In-memory AsyncStorage for every suite (the offline outbox is reached from
+// lib/queries.ts). Suites that need to inspect storage still mock it themselves.
+jest.mock('@react-native-async-storage/async-storage', () => {
+  const store = new Map<string, string>();
+  return {
+    __esModule: true,
+    default: {
+      getItem: jest.fn(async (k: string) => store.get(k) ?? null),
+      setItem: jest.fn(async (k: string, v: string) => void store.set(k, v)),
+      removeItem: jest.fn(async (k: string) => void store.delete(k)),
+      clear: jest.fn(async () => store.clear()),
+    },
+  };
+});

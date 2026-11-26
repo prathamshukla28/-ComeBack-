@@ -1,4 +1,12 @@
 import type { PostgrestError } from '@supabase/supabase-js';
+import {
+  enqueueHabit,
+  isNetworkError,
+  newHabitId,
+  replayOutbox,
+  takeLatestPending,
+  withReplayPaused,
+} from './outbox';
 import { supabase } from './supabase';
 import {
   computeStreakStats,
@@ -116,6 +124,13 @@ const num = (v: Numeric | undefined): number => Number(v ?? 0) || 0;
 
 /* ---------- Habits (cigarette, alcohol, intimacy) ---------- */
 
+/**
+ * The habit kept behind the private tab's PIN / biometric lock. It never appears on
+ * an unlocked screen and is never included in anything sent to Gemini (the Coach and
+ * Guru context below, or the RAG service's user history — rag/ingest/user_history.py).
+ */
+export const PRIVATE_HABIT: HabitKind = 'intimacy';
+
 export async function logHabit(
   kind: HabitKind,
   amount = 1,
@@ -138,10 +153,12 @@ export async function logHabit(
  */
 export async function logHabitResilient(kind: HabitKind, amount = 1): Promise<{ queued: boolean }> {
   const occurred_at = new Date().toISOString();
-  const { enqueueHabit, isNetworkError, newHabitId } = await import('./outbox');
   const id = newHabitId();
   try {
     await logHabit(kind, amount, {}, id);
+    // The connection is evidently back: replay anything queued earlier (no-op when
+    // the queue is empty; never throws).
+    void replayOutbox();
     return { queued: false };
   } catch (e) {
     if (!isNetworkError(e)) throw e;
@@ -205,12 +222,19 @@ export async function cleanStreakStats(kind: HabitKind): Promise<StreakStats> {
   return computeStreakStats(days, localDay(new Date()));
 }
 
-/** Consecutive local days, ending today, with at least one workout. */
+/**
+ * PostgREST inner embed: only `workouts` rows with at least one `workout_sets` row
+ * match. A workout row with no sets (an older build created one just for opening the
+ * app, or every set was deleted) is not a day you trained.
+ */
+const HAS_SETS = 'workout_sets!inner(id)';
+
+/** Consecutive local days, ending today, with at least one logged set. */
 export async function workoutStreak(): Promise<number> {
   const rows = rowsOf<Pick<WorkoutRow, 'performed_on'>>(
     await supabase
       .from('workouts')
-      .select('performed_on')
+      .select(`performed_on, ${HAS_SETS}`)
       .order('performed_on', { ascending: false })
       .limit(366),
   );
@@ -295,11 +319,17 @@ export function habitLast7Days(kind: HabitKind): Promise<{ date: string; total: 
   return habitDailyTotals(kind, 7);
 }
 
-/** Count of workout sessions per local day over the trailing `days` days (oldest first). */
+/**
+ * Count of workout sessions (with at least one logged set) per local day over the
+ * trailing `days` days (oldest first).
+ */
 export async function workoutDailyCounts(days = 14): Promise<{ date: string; total: number }[]> {
   const keys = trailingDays(days, localDay(new Date()));
   const rows = rowsOf<Pick<WorkoutRow, 'performed_on'>>(
-    await supabase.from('workouts').select('performed_on').gte('performed_on', keys[0]),
+    await supabase
+      .from('workouts')
+      .select(`performed_on, ${HAS_SETS}`)
+      .gte('performed_on', keys[0]),
   );
   const map = new Map<string, number>(keys.map((d) => [d, 0]));
   for (const r of rows) {
@@ -309,19 +339,28 @@ export async function workoutDailyCounts(days = 14): Promise<{ date: string; tot
   return Array.from(map, ([date, total]) => ({ date, total }));
 }
 
+/**
+ * Take back the most recent log of a habit. If that log is a tap still waiting in
+ * the offline outbox (newer than anything on the server), it is removed from the
+ * queue — deleting the newest *server* row instead would undo the wrong tap.
+ * Replays are held off meanwhile so the queued tap cannot land mid-undo.
+ */
 export async function undoLastHabit(kind: HabitKind): Promise<boolean> {
-  const rows = rowsOf<Pick<HabitLogRow, 'id'>>(
-    await supabase
-      .from('habit_logs')
-      .select('id')
-      .eq('kind', kind)
-      .order('occurred_at', { ascending: false })
-      .limit(1),
-  );
-  if (!rows.length) return false;
-  const del = await supabase.from('habit_logs').delete().eq('id', rows[0].id);
-  if (del.error) throw del.error;
-  return true;
+  return withReplayPaused(async () => {
+    const rows = rowsOf<Pick<HabitLogRow, 'id' | 'occurred_at'>>(
+      await supabase
+        .from('habit_logs')
+        .select('id, occurred_at')
+        .eq('kind', kind)
+        .order('occurred_at', { ascending: false })
+        .limit(1),
+    );
+    if (await takeLatestPending(kind, rows[0]?.occurred_at)) return true;
+    if (!rows.length) return false;
+    const del = await supabase.from('habit_logs').delete().eq('id', rows[0].id);
+    if (del.error) throw del.error;
+    return true;
+  });
 }
 
 /* ---------- Workouts ---------- */
@@ -338,9 +377,12 @@ export async function listExercises(): Promise<Exercise[]> {
   );
 }
 
-/** Id of today's (local day) workout, creating it on first use. */
-export async function ensureTodayWorkout(): Promise<string> {
-  const today = localDay(new Date());
+/**
+ * Id of today's (local day) workout, or `null` if none exists yet. Read-only:
+ * screens that only *show* today's sets use this so that opening the app never
+ * creates an empty workout row.
+ */
+export async function findTodayWorkout(today = localDay(new Date())): Promise<string | null> {
   const existing = rowsOf<Pick<WorkoutRow, 'id'>>(
     await supabase
       .from('workouts')
@@ -349,7 +391,17 @@ export async function ensureTodayWorkout(): Promise<string> {
       .order('created_at', { ascending: true })
       .limit(1),
   );
-  if (existing.length) return existing[0].id;
+  return existing[0]?.id ?? null;
+}
+
+/**
+ * Id of today's (local day) workout, creating it on first use. Call this only when
+ * a set is actually being logged; use {@link findTodayWorkout} to read.
+ */
+export async function ensureTodayWorkout(): Promise<string> {
+  const today = localDay(new Date());
+  const existing = await findTodayWorkout(today);
+  if (existing) return existing;
   const created = rowOf<Pick<WorkoutRow, 'id'>>(
     await supabase.from('workouts').insert({ performed_on: today }).select('id').single(),
   );
@@ -511,7 +563,8 @@ function rowsOrNull<T>(label: string, res: QueryResult): T[] | null {
 }
 
 /**
- * Plain-text digest of the last 30 days, fed to the AI as context.
+ * Plain-text digest of the last 30 days, fed to the AI as context. Never includes
+ * the private habit ({@link PRIVATE_HABIT}).
  *
  * Each section degrades independently: a failed query renders as "unavailable"
  * rather than "none", so the model is never told "you didn't work out" because a
@@ -526,7 +579,7 @@ export async function last30dContext(): Promise<string> {
   const [workoutsRes, setsRes, habitsRes, bodyRes] = await Promise.all([
     supabase
       .from('workouts')
-      .select('performed_on')
+      .select(`performed_on, ${HAS_SETS}`)
       .gte('performed_on', sinceDay)
       .order('performed_on', { ascending: true }),
     supabase
@@ -535,7 +588,13 @@ export async function last30dContext(): Promise<string> {
       .gte('created_at', sinceIso)
       .order('created_at', { ascending: false })
       .limit(200),
-    supabase.from('habit_logs').select('kind, amount').gte('occurred_at', sinceIso),
+    // Intimacy is excluded at the query: it lives behind the PIN / biometric lock,
+    // so it is never fetched for, or sent to, the model.
+    supabase
+      .from('habit_logs')
+      .select('kind, amount')
+      .neq('kind', PRIVATE_HABIT)
+      .gte('occurred_at', sinceIso),
     supabase
       .from('body_metrics')
       .select('measured_on, weight_kg, body_fat_pct, created_at')
@@ -549,16 +608,16 @@ export async function last30dContext(): Promise<string> {
   const sets = rowsOrNull<
     Pick<WorkoutSetRow, 'exercise_name' | 'weight_kg' | 'reps' | 'rir' | 'created_at'>
   >('workout_sets', setsRes);
-  const habits = rowsOrNull<Pick<HabitLogRow, 'kind' | 'amount'>>('habit_logs', habitsRes);
+  // Belt-and-braces: drop any private row even if the server-side filter is bypassed.
+  const habits = rowsOrNull<Pick<HabitLogRow, 'kind' | 'amount'>>('habit_logs', habitsRes)?.filter(
+    (h) => h.kind !== PRIVATE_HABIT,
+  );
   const body = rowsOrNull<BodyMetricRow>('body_metrics', bodyRes);
 
   const habitTotal = (kind: HabitKind) =>
     habits
       ? String(habits.filter((h) => h.kind === kind).reduce((s, h) => s + num(h.amount), 0))
       : UNAVAILABLE;
-  const intCount = habits
-    ? String(habits.filter((h) => h.kind === 'intimacy').length)
-    : UNAVAILABLE;
 
   const workoutLine = workouts
     ? `Workouts (${workouts.length}): ${workouts.map((w) => w.performed_on).join(', ') || 'none'}`
@@ -586,7 +645,6 @@ ${setLines}
 
 Cigarettes total: ${habitTotal('cigarette')}
 Alcohol units total: ${habitTotal('alcohol')}
-Intimacy count: ${intCount}
 Latest body: ${bodyLine}
 ---`;
 }
