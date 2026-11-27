@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/prathamshukla28/-ComeBack-/compare/comeback-v1.0.1...comeback-v1.1.0) (2026-11-27)
+
+
+### Features
+
+* add Python RAG service (pgvector + Gemini) for AI coach ([#39](https://github.com/prathamshukla28/-ComeBack-/issues/39)) ([dc7fddf](https://github.com/prathamshukla28/-ComeBack-/commit/dc7fddfc1a70c97ff9990c0cd65937fb17919f1c))
+
+
+### Bug Fixes
+
+* portfolio hardening for privacy, safety, streaks, outbox and rag ([#46](https://github.com/prathamshukla28/-ComeBack-/issues/46)) ([9eb9633](https://github.com/prathamshukla28/-ComeBack-/commit/9eb963309dc1021ad1194bd107c0f104c14ab359))
+
 ## [1.0.1](https://github.com/prathamshukla28/-ComeBack-/compare/comeback-v1.0.0...comeback-v1.0.1) (2026-08-13)
 
 
