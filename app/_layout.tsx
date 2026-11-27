@@ -8,9 +8,12 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
+import { EnvBanner } from '@/components/EnvBanner';
 import { useColorScheme } from '@/components/useColorScheme';
 import LoginScreen from './login';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { startOutboxReplay } from '@/lib/outbox';
+import { SubscriptionProvider } from '@/lib/subscription';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -37,7 +40,9 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <RootLayoutNav />
+        <SubscriptionProvider>
+          <RootLayoutNav />
+        </SubscriptionProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
@@ -47,8 +52,16 @@ function RootLayoutNav() {
   const scheme = useColorScheme();
   const { session, loading } = useAuth();
 
+  // Replay habit logs captured offline once signed in: now, on every return to the
+  // foreground, and periodically while foregrounded (lib/outbox.ts).
+  useEffect(() => {
+    if (!session) return;
+    return startOutboxReplay(() => queryClient.invalidateQueries({ queryKey: ['habit'] }));
+  }, [session]);
+
   return (
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <EnvBanner />
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" />
@@ -58,7 +71,7 @@ function RootLayoutNav() {
       ) : (
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="paywall" options={{ presentation: 'modal', title: 'ComeBack Pro' }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
         </Stack>
       )}

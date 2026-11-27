@@ -51,6 +51,27 @@ def _since_iso(days: int) -> str:
     return (datetime.utcnow() - timedelta(days=days)).isoformat()
 
 
+# The habit kept behind the app's PIN / biometric lock (lib/queries.ts PRIVATE_HABIT).
+# It is never read here, so it is never embedded, stored as a memory, or sent to Gemini.
+PRIVATE_HABIT = "intimacy"
+
+
+def _top_sets(rows: list[dict]) -> dict[str, tuple[float, int]]:
+    """Best set per exercise by Epley estimated 1RM (ties → more reps) → (kg, reps).
+
+    Compares each set against the best *estimate* so far — not against the stored
+    weight — and keeps bodyweight (0 kg) exercises instead of dropping them.
+    """
+    best: dict[str, tuple[float, int, float, int]] = {}  # name → (est, reps, kg, reps)
+    for r in rows:
+        name = r["exercise_name"]
+        w, reps = float(r.get("weight_kg") or 0), int(r.get("reps") or 0)
+        key = (w * (1 + reps / 30), reps)
+        if name not in best or key > best[name][:2]:
+            best[name] = (*key, w, reps)
+    return {name: (w, reps) for name, (_, _, w, reps) in best.items()}
+
+
 def build_summaries(sets: list[dict], habits: list[dict], body: list[dict]) -> list[dict]:
     """Group into weekly summaries → list of {kind, content, dedupe_key, metadata}."""
     out: list[dict] = []
@@ -61,13 +82,7 @@ def build_summaries(sets: list[dict], habits: list[dict], body: list[dict]) -> l
         d = datetime.fromisoformat(s["created_at"].replace("Z", "+00:00")).date()
         by_week[_iso_week(d)].append(s)
     for week, rows in sorted(by_week.items()):
-        best: dict[str, tuple[float, int]] = {}
-        for r in rows:
-            name = r["exercise_name"]
-            w, reps = float(r.get("weight_kg") or 0), int(r.get("reps") or 0)
-            est = w * (1 + reps / 30)
-            if est > best.get(name, (0, 0))[0]:
-                best[name] = (w, reps)
+        best = _top_sets(rows)
         lines = ", ".join(f"{n} {w:g}kg×{reps}" for n, (w, reps) in sorted(best.items()))
         out.append(
             {
@@ -78,9 +93,12 @@ def build_summaries(sets: list[dict], habits: list[dict], body: list[dict]) -> l
             }
         )
 
-    # Habits: per week per kind totals.
+    # Habits: per week per kind totals. The private habit is skipped even if a caller
+    # passes it in (main() already filters it out of the query).
     hb: dict[tuple[str, str], float] = defaultdict(float)
     for h in habits:
+        if h.get("kind") == PRIVATE_HABIT:
+            continue
         d = datetime.fromisoformat(h["occurred_at"].replace("Z", "+00:00")).date()
         hb[(_iso_week(d), h["kind"])] += float(h.get("amount") or 0)
     hb_week: dict[str, list[str]] = defaultdict(list)
@@ -134,7 +152,8 @@ async def main() -> None:
             ),
             _select(
                 "habit_logs",
-                f"select=kind,amount,occurred_at&occurred_at=gte.{since}&limit=500",
+                f"select=kind,amount,occurred_at&kind=neq.{PRIVATE_HABIT}"
+                f"&occurred_at=gte.{since}&limit=500",
                 token,
                 client,
             ),

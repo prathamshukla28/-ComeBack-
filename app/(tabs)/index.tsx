@@ -11,12 +11,13 @@ import {
 } from '@/lib/coach-messages';
 import {
   cleanStreak,
-  ensureTodayWorkout,
+  findTodayWorkout,
   habitCountToday,
   loadProfile,
   todaySets,
   workoutStreak,
 } from '@/lib/queries';
+import { localDay } from '@/lib/streaks';
 import { useTheme } from '@/lib/theme';
 
 function vibeColor(v: Vibe, theme: any) {
@@ -63,11 +64,13 @@ export default function Dashboard() {
     queryKey: ['habit', 'alcohol', 'today'],
     queryFn: () => habitCountToday('alcohol'),
   });
-  const intim = useQuery({
-    queryKey: ['habit', 'intimacy', 'today'],
-    queryFn: () => habitCountToday('intimacy'),
+  // The private habit is deliberately absent: it lives behind the PIN / biometric
+  // lock on its own tab, and this screen is never locked.
+  // Read-only lookup: opening the dashboard must never create an empty workout row.
+  const workoutId = useQuery({
+    queryKey: ['todayWorkout', localDay(new Date())],
+    queryFn: () => findTodayWorkout(),
   });
-  const workoutId = useQuery({ queryKey: ['todayWorkout'], queryFn: ensureTodayWorkout });
   const sets = useQuery({
     queryKey: ['sets', workoutId.data],
     queryFn: () => todaySets(workoutId.data!),
@@ -152,7 +155,6 @@ export default function Dashboard() {
         <P muted style={{ fontSize: 13, color: vibeColor(alcMsg.vibe, c), marginBottom: 8 }}>
           {alcMsg.text}
         </P>
-        <StatRowAnim label="❤️ Intimacy" value={intim.data ?? 0} textColor={c.text} />
       </Card>
 
       <Card>

@@ -46,6 +46,10 @@ Supabase = your app's cloud database. Free tier is plenty.
 2. Open `db/schema.sql` from this project on your Mac, copy the **entire file**
 3. Paste it into the Supabase SQL editor
 4. Click **Run** (or Cmd+Enter). You should see "Success. No rows returned."
+5. Optional (only if you'll run the RAG service in `rag/` or sell Pro): run
+   `db/rag.sql` and then `db/entitlements.sql` the same way. If your project ran an
+   older `db/rag.sql` (one that created `ivfflat` indexes), also run
+   `db/migrations/001_rag_exact_vector_search.sql` (why: `docs/RAG.md`).
 
 ### 2b — Get your Supabase keys
 
@@ -146,11 +150,91 @@ Scan the QR with your iPhone camera. Done.
 
 ## What's next
 
-After you confirm Phase 1 opens on your iPhone and you can log in:
+- **Grounded answers** — run the optional RAG service: [`rag/README.md`](../rag/README.md).
+- **Subscriptions** — RevenueCat + server-side Pro: [`MONETIZATION.md`](./MONETIZATION.md).
+- **Demo the Pro-only Life Coach** in a dev build without a purchase:
+  `EXPO_PUBLIC_DEMO_PRO=1 npx expo start` (inert in production builds).
 
-- **Phase 2** — Workout logging + habits (cigs, alcohol) + Dashboard
-- **Phase 3** — Intimacy tab with FaceID lock
-- **Phase 4** — Fitness Guru + Life Coach AI chats
-- **Phase 5** — Weekly summaries + data export
+## Building installable apps with EAS (optional)
 
-Reply "Phase 1 works" when you can log in on your iPhone, and I'll build Phase 2.
+Expo Go is enough for day-to-day use. When you want a real install — an Android APK
+to side-load, or a store build — use [EAS Build](https://docs.expo.dev/build/introduction/).
+[`eas.json`](../eas.json) defines three profiles and holds **no secrets**:
+
+| Profile       | What you get                                                                 | Distribution            |
+| ------------- | ---------------------------------------------------------------------------- | ----------------------- |
+| `development` | A development build (your own "Expo Go" with this app's native code)         | internal (ad hoc / APK) |
+| `preview`     | A release-mode build to test; on Android an **`.apk`** you can side-load     | internal                |
+| `production`  | Store builds (Android App Bundle, iOS archive); build number auto-increments | store                   |
+
+One-time setup:
+
+```bash
+npm install -g eas-cli          # needs eas-cli >= 16 (see "cli" in eas.json)
+eas login
+eas init                        # links an Expo project; writes extra.eas.projectId to app.json
+```
+
+The first `eas build` asks for an iOS bundle identifier and an Android package name
+(e.g. `com.yourname.comeback`) and saves them to `app.json`; pick your own, they are
+permanent once published. Version numbers live on EAS (`"appVersionSource": "remote"`).
+
+**Environment variables.** `.env` is git-ignored, so it is **not** uploaded to EAS.
+Each profile reads the EAS environment of the same name (`"environment"` in
+`eas.json`). Add the same public values as your `.env` to each one you use:
+
+```bash
+eas env:create --environment preview --name EXPO_PUBLIC_SUPABASE_URL --value https://xxxxxxxxxxxx.supabase.co --visibility plaintext
+eas env:create --environment preview --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value eyJ... --visibility plaintext
+# optional: EXPO_PUBLIC_RAG_URL, EXPO_PUBLIC_REVENUECAT_IOS_KEY / _ANDROID_KEY
+```
+
+These `EXPO_PUBLIC_*` values are bundled into the app and are public by design;
+never put a service-role key or any other secret in an EAS environment the app
+reads. Users still paste their own Gemini key in Settings.
+
+Build:
+
+```bash
+eas build --profile preview --platform android   # → .apk download link
+eas build --profile production --platform all    # store builds
+eas submit --profile production --platform ios   # later, when you have store accounts
+```
+
+Notes:
+
+- The `development` profile needs `expo-dev-client`, which is not installed by
+  default because it adds native code. Run `npx expo install expo-dev-client` before
+  your first `eas build --profile development`. `preview` and `production` don't need it.
+- Internal iOS builds need an Apple Developer account and registered devices
+  (`eas device:create`). The Android APK needs nothing extra.
+- The opt-in `EAS Preview` workflow (`.github/workflows/eas-preview.yml`) runs
+  `eas build --profile preview --platform all --non-interactive` on PRs once
+  `EXPO_TOKEN` is set. Non-interactive builds can't answer prompts, so run one build
+  locally first (so the project id, bundle identifier and package name are in
+  `app.json`) and set up iOS credentials, or the iOS half will fail.
+- Building and submitting are production actions: they spend EAS build minutes and
+  publish to stores. Nothing in this repo runs them automatically without your token.
+
+## RLS integration test (optional, local only)
+
+`db/__tests__/rls.integration.test.ts` signs in two real users against a local
+Supabase stack and proves that one cannot read, change, or delete the other's rows,
+that the anon key cannot touch the exercise presets, that nobody can self-grant Pro,
+and that duplicate set numbers are rejected. It is skipped (one visible placeholder
+test) unless the variables below are set, so `npm test` and CI never need a database.
+
+```bash
+# needs the Supabase CLI + Docker
+supabase start                                  # prints API URL, anon + service_role keys
+DB=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+psql "$DB" -f db/schema.sql -f db/rag.sql -f db/entitlements.sql
+
+SUPABASE_TEST_URL=http://127.0.0.1:54321 \
+SUPABASE_TEST_ANON_KEY=<anon key> \
+SUPABASE_TEST_SERVICE_ROLE_KEY=<service_role key> \
+npm run test:rls
+```
+
+It creates and deletes two throwaway auth users. **Never point it at a production
+project.**

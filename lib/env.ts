@@ -3,10 +3,16 @@ import { z } from 'zod';
 const EnvSchema = z.object({
   EXPO_PUBLIC_SUPABASE_URL: z.string().url({ message: 'Must be a valid https URL' }),
   EXPO_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20, 'Anon key looks too short'),
-  EXPO_PUBLIC_GEMINI_API_KEY: z.string().min(10).optional(),
+  // NOTE: the Gemini API key is intentionally NOT an env var. EXPO_PUBLIC_* values
+  // are inlined into the client bundle in plaintext; instead each user pastes their
+  // own key in Settings and it is kept in the OS keychain via lib/secureStore.ts.
   // Optional: base URL of the Python RAG service (rag/). When set, the Guru tab
   // routes questions through retrieval-augmented grounding. Unset = direct Gemini.
   EXPO_PUBLIC_RAG_URL: z.string().url().optional(),
+  // Optional: RevenueCat public SDK keys that power ComeBack Pro subscriptions.
+  // Unset = billing disabled (Pro features stay locked). See docs/MONETIZATION.md.
+  EXPO_PUBLIC_REVENUECAT_IOS_KEY: z.string().min(10).optional(),
+  EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: z.string().min(10).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
@@ -14,8 +20,9 @@ export type Env = z.infer<typeof EnvSchema>;
 const raw = {
   EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
   EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-  EXPO_PUBLIC_GEMINI_API_KEY: process.env.EXPO_PUBLIC_GEMINI_API_KEY,
   EXPO_PUBLIC_RAG_URL: process.env.EXPO_PUBLIC_RAG_URL,
+  EXPO_PUBLIC_REVENUECAT_IOS_KEY: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
+  EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
 };
 
 const parsed = EnvSchema.safeParse(raw);

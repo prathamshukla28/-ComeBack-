@@ -2,8 +2,11 @@
 
 Every user-data call carries the END USER'S access token in Authorization, so the
 request executes as that user and row-level security governs visibility. The service
-never substitutes the service-role key on the request path — that key is reserved for
-the offline curated-KB ingest (see ingest/exercise_kb.py), which touches no user data.
+never substitutes the service-role key on a user request path. That key has exactly
+two uses, neither of which acts on behalf of a calling user:
+  * the offline curated-KB ingest (ingest/exercise_kb.py), which touches no user data;
+  * `service_rpc` below, used only by the authenticated RevenueCat webhook
+    (app/webhooks.py) to record billing state in `user_entitlements`.
 """
 
 from __future__ import annotations
@@ -31,6 +34,41 @@ def _headers(user_jwt: str) -> dict[str, str]:
     }
 
 
+async def _post_rpc(
+    fn: str,
+    params: dict[str, Any],
+    headers: dict[str, str],
+    client: httpx.AsyncClient | None,
+) -> httpx.Response:
+    settings = get_settings()
+    url = f"{settings.rest_url}/rpc/{fn}"
+    owns = client is None
+    client = client or httpx.AsyncClient(timeout=30)
+    try:
+        return await client.post(url, json=params, headers=headers)
+    finally:
+        if owns:
+            await client.aclose()
+
+
+async def service_rpc(
+    fn: str,
+    params: dict[str, Any],
+    client: httpx.AsyncClient | None = None,
+) -> Any:
+    """Call a Postgres function with the SERVICE-ROLE key. Webhook use only — never
+    on a path that acts for a calling user (see module docstring)."""
+    settings = get_settings()
+    key = settings.supabase_service_role_key
+    if not key:
+        raise HTTPException(status_code=503, detail="Service-role key not configured")
+    headers = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    res = await _post_rpc(fn, params, headers, client)
+    if not res.is_success:
+        raise HTTPException(status_code=502, detail=f"Supabase {res.status_code}: {res.text[:200]}")
+    return res.json() if res.content else None
+
+
 async def rpc(
     fn: str,
     params: dict[str, Any],
@@ -38,16 +76,7 @@ async def rpc(
     client: httpx.AsyncClient | None = None,
 ) -> Any:
     """Call a Postgres function via PostgREST as the forwarded user."""
-    settings = get_settings()
-    url = f"{settings.rest_url}/rpc/{fn}"
-
-    owns = client is None
-    client = client or httpx.AsyncClient(timeout=30)
-    try:
-        res = await client.post(url, json=params, headers=_headers(user_jwt))
-    finally:
-        if owns:
-            await client.aclose()
+    res = await _post_rpc(fn, params, _headers(user_jwt), client)
 
     if res.status_code in (401, 403):
         # RLS / auth rejection — surface as an auth error, not a 500.
@@ -116,3 +145,14 @@ async def upsert_user_memory(
         user_jwt,
         client,
     )
+
+
+async def has_entitlement(
+    entitlement: str,
+    user_jwt: str,
+    client: httpx.AsyncClient | None = None,
+) -> bool:
+    """Whether the CALLER holds `entitlement`. Runs under their JWT, so RLS scopes the
+    lookup to auth.uid() — a user can only ever learn about their own entitlement."""
+    result = await rpc("has_entitlement", {"p_entitlement": entitlement}, user_jwt, client)
+    return result is True
