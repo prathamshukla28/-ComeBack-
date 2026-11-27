@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.config import EMBEDDING_DIM
 from app.main import app
+from tests.conftest import auth_user_route
 
 client = TestClient(app)
 
@@ -76,6 +77,7 @@ def test_coach_requires_auth():
 
 @respx.mock
 def test_retrieve_filters_low_similarity(auth_header):
+    auth_user_route()
     _embed_route()
     respx.post(f"{REST}/rpc/match_exercise_kb").mock(return_value=httpx.Response(200, json=KB_ROWS))
     respx.post(f"{REST}/rpc/match_user_memories").mock(
@@ -93,6 +95,7 @@ def test_retrieve_filters_low_similarity(auth_header):
 
 @respx.mock
 def test_coach_forwards_user_jwt_to_supabase(auth_header, user_jwt):
+    auth_user_route()
     _embed_route()
     _generate_route()
     kb = respx.post(f"{REST}/rpc/match_exercise_kb").mock(
@@ -118,6 +121,7 @@ def test_coach_forwards_user_jwt_to_supabase(auth_header, user_jwt):
 
 @respx.mock
 def test_add_memory_embeds_as_document_and_upserts(auth_header):
+    auth_user_route()
     embed = _embed_route()
     upsert = respx.post(f"{REST}/rpc/upsert_user_memory").mock(
         return_value=httpx.Response(200, json="00000000-0000-0000-0000-0000000000c1")

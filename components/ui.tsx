@@ -145,6 +145,9 @@ export function Button({
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
         disabled={disabled || loading}
         onPress={(e) => {
           hapticTap();

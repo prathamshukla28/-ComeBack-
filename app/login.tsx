@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
+import { notify } from '@/lib/notify';
 
 export default function LoginScreen() {
   const { c, brand } = useTheme();
@@ -24,7 +24,7 @@ export default function LoginScreen() {
 
   const submit = async () => {
     if (!email || !password) {
-      Alert.alert('Missing info', 'Enter both email and password.');
+      notify('Missing info', 'Enter both email and password.');
       return;
     }
     setBusy(true);
@@ -32,10 +32,10 @@ export default function LoginScreen() {
       const { error } =
         mode === 'in' ? await signIn(email, password) : await signUp(email, password);
       if (error) {
-        Alert.alert(mode === 'in' ? 'Sign-in failed' : 'Sign-up failed', error);
+        notify(mode === 'in' ? 'Sign-in failed' : 'Sign-up failed', error);
       }
     } catch (e: any) {
-      Alert.alert(
+      notify(
         'Network error',
         e?.message ?? 'Could not reach Supabase. Check your .env and internet.',
       );
