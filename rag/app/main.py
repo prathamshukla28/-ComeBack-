@@ -64,10 +64,13 @@ CRISIS_MODEL = "crisis-resources"
 
 @app.post("/rag/coach", response_model=CoachResponse)
 async def coach(req: CoachRequest, user: UserToken = Depends(require_pro)) -> CoachResponse:
+    # The subject comes from the caller's token: strip line breaks so it cannot forge log lines.
+    sub = str(user.subject)[:64].replace("\r\n", "").replace("\n", "").replace("\r", "")
+
     # Safety gate, mirroring the app's: a self-harm signal never reaches Gemini (nor
     # retrieval). The caller gets vetted human crisis resources instead.
     if detect_crisis(req.query):
-        logger.info("coach thread=%s sub=%s crisis=1", req.thread, user.subject)
+        logger.info("coach thread=%s sub=%s crisis=1", req.thread, sub)
         return CoachResponse(
             answer=CRISIS_RESOURCES, sources=RetrievedContext(), model=CRISIS_MODEL
         )
@@ -88,7 +91,7 @@ async def coach(req: CoachRequest, user: UserToken = Depends(require_pro)) -> Co
     logger.info(
         "coach thread=%s sub=%s kb=%d mem=%d",
         req.thread,
-        user.subject,
+        sub,
         len(ctx.kb),
         len(ctx.memories),
     )

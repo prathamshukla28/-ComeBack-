@@ -96,6 +96,18 @@ def test_crisis_message_gets_resources_and_never_reaches_gemini(auth_header, thr
 
 
 @respx.mock
+def test_token_subject_cannot_forge_log_lines(auth_header, caplog: pytest.LogCaptureFixture):
+    caplog.set_level("INFO", logger="comeback.rag")
+    auth_user_route(sub="user-123\r\nINFO forged admin=1")
+
+    r = client.post("/rag/coach", json={"query": "I want to end my life"}, headers=auth_header)
+
+    assert r.status_code == 200
+    logged = [rec.getMessage() for rec in caplog.records if "crisis=1" in rec.getMessage()]
+    assert logged == ["coach thread=guru sub=user-123INFO forged admin=1 crisis=1"]
+
+
+@respx.mock
 @pytest.mark.parametrize("thread", ["guru", "coach"])
 def test_normal_generation_sends_the_safety_preamble(auth_header, thread):
     auth_user_route()
